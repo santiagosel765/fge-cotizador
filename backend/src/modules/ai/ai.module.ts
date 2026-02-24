@@ -1,25 +1,20 @@
 import { Module } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { GoogleGenerativeAI } from '@google/generative-ai';
-import { AiConversation } from './entities/ai-conversation.entity';
-import { AiGeneratedAsset } from './entities/ai-generated-asset.entity';
-import { AiMessage } from './entities/ai-message.entity';
+import { MaterialsModule } from '../materials/materials.module';
+import { ProjectsModule } from '../projects/projects.module';
 import { AiController } from './ai.controller';
 import { AiService } from './ai.service';
+import { AiConversation } from './entities/ai-conversation.entity';
+import { AiGeneratedAsset } from './entities/ai-generated-asset.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([AiGeneratedAsset, AiConversation, AiMessage])],
-  controllers: [AiController],
-  providers: [
-    AiService,
-    {
-      provide: GoogleGenerativeAI,
-      inject: [ConfigService],
-      useFactory: (configService: ConfigService) =>
-        new GoogleGenerativeAI(configService.get<string>('GEMINI_API_KEY', '')),
-    },
+  imports: [
+    TypeOrmModule.forFeature([AiGeneratedAsset, AiConversation]),
+    ProjectsModule,
+    MaterialsModule,
   ],
-  exports: [AiService, TypeOrmModule],
+  controllers: [AiController],
+  providers: [AiService],
+  exports: [AiService],
 })
 export class AiModule {}
