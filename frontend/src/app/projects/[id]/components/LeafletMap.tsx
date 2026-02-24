@@ -1,19 +1,17 @@
 'use client';
-
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import type { Map as LeafletMapType } from 'leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
-const defaultIcon = L.icon({
+// Fix iconos Leaflet con Next.js
+delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl;
+L.Icon.Default.mergeOptions({
   iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
   iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
 });
-
-L.Marker.prototype.options.icon = defaultIcon;
 
 interface Props {
   latitude?: number;
@@ -30,32 +28,36 @@ function ClickHandler({ onLocationChange }: { onLocationChange: (lat: number, ln
   return null;
 }
 
-function RecenterMap({ latitude, longitude }: { latitude?: number; longitude?: number }) {
-  const map = useMapEvents({});
+export default function LeafletMap({ latitude, longitude, onLocationChange }: Props) {
+  const mapRef = useRef<LeafletMapType | null>(null);
 
   useEffect(() => {
-    if (typeof latitude === 'number' && typeof longitude === 'number') {
-      map.setView([latitude, longitude], 14);
+    if (
+      mapRef.current &&
+      typeof latitude === 'number' &&
+      typeof longitude === 'number'
+    ) {
+      mapRef.current.setView([latitude, longitude], 14);
     }
-  }, [latitude, longitude, map]);
+  }, [latitude, longitude]);
 
-  return null;
-}
-
-export default function LeafletMap({ latitude, longitude, onLocationChange }: Props) {
   const center: [number, number] =
     typeof latitude === 'number' && typeof longitude === 'number'
       ? [latitude, longitude]
       : [14.6349, -90.5069];
 
   return (
-    <MapContainer center={center} zoom={10} className="h-72 w-full rounded-lg z-0">
+    <MapContainer
+      center={center}
+      zoom={10}
+      className="h-72 w-full rounded-lg z-0"
+      ref={mapRef}
+    >
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
       <ClickHandler onLocationChange={onLocationChange} />
-      <RecenterMap latitude={latitude} longitude={longitude} />
       {typeof latitude === 'number' && typeof longitude === 'number' && (
         <Marker position={[latitude, longitude]} />
       )}
