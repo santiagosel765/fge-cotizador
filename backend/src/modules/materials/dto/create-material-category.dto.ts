@@ -4,11 +4,11 @@ import { ApiProperty } from '@nestjs/swagger';
 export class CreateMaterialCategoryDto {
   @ApiProperty({ example: 'obra_gris' })
   @IsString()
-  code: string;
+  code!: string;
 
   @ApiProperty({ example: 'Obra Gris' })
   @IsString()
-  name: string;
+  name!: string;
 
   @ApiProperty({ required: false, default: 0 })
   @IsOptional()
