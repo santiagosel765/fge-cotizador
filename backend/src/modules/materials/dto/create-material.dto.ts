@@ -4,24 +4,24 @@ import { ApiProperty } from '@nestjs/swagger';
 export class CreateMaterialDto {
   @ApiProperty({ example: 'cem-01' })
   @IsString()
-  legacyCode: string;
+  legacyCode!: string;
 
   @ApiProperty({ description: 'UUID de la categoría' })
   @IsString()
-  categoryId: string;
+  categoryId!: string;
 
   @ApiProperty({ example: 'Bolsa de Cemento UGC 3000 PSI' })
   @IsString()
-  name: string;
+  name!: string;
 
   @ApiProperty({ example: 'Bolsa 42.5kg' })
   @IsString()
-  unit: string;
+  unit!: string;
 
   @ApiProperty({ example: 85.00 })
   @IsNumber()
   @IsPositive()
-  unitPriceGtq: number;
+  unitPriceGtq!: number;
 
   @ApiProperty({ required: false, default: true })
   @IsOptional()
