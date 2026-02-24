@@ -43,7 +43,8 @@ export class AiService {
     const project = await this.projectsService.findOne(dto.projectId);
     if (!project) throw new NotFoundException('Proyecto no encontrado');
 
-    const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const chatModel = this.configService.get<string>('GEMINI_MODEL_CHAT') ?? 'gemini-1.5-flash';
+    const model = this.genAI.getGenerativeModel({ model: chatModel });
 
     const systemContext = `Eres un asistente experto en construcción de viviendas en Guatemala para Fundación Génesis Empresarial (FGE).
 Ayudas a clientes a definir sus proyectos de construcción.
@@ -59,7 +60,10 @@ Cuando el usuario haya definido bien su proyecto, sugiere usar el botón "Genera
 
     const chat = model.startChat({
       history,
-      systemInstruction: systemContext,
+      systemInstruction: {
+        role: 'system',
+        parts: [{ text: systemContext }],
+      },
     });
 
     let reply = '';
@@ -97,7 +101,8 @@ Cuando el usuario haya definido bien su proyecto, sugiere usar el botón "Genera
     const project = await this.projectsService.findOne(dto.projectId);
     if (!project) throw new NotFoundException('Proyecto no encontrado');
 
-    const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const planModel = this.configService.get<string>('GEMINI_MODEL_PLAN') ?? 'gemini-1.5-flash';
+    const model = this.genAI.getGenerativeModel({ model: planModel });
 
     const categories = await this.materialsService.findAllCategories();
     const materialsList = categories
