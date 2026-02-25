@@ -66,6 +66,6 @@ export interface AiAsset {
 }
 
 export interface AiMessage {
-  role: 'user' | 'assistant';
+  role: 'user' | 'assistant' | 'system';
   content: string;
 }

@@ -2,14 +2,14 @@
 
 import { useState } from 'react';
 import { api } from '@/lib/api';
-import type { Project, AiMessage } from '@/types/project';
+import type { AiMessage } from '@/types/project';
 
-interface Props {
-  project: Project;
-  onProjectUpdate: (p: Project) => void;
+interface ChatTabProps {
+  projectId: string;
+  onGeneratePlan?: () => void;
 }
 
-export default function ChatTab({ project, onProjectUpdate }: Props) {
+export default function ChatTab({ projectId, onGeneratePlan }: ChatTabProps) {
   const [messages, setMessages] = useState<AiMessage[]>([
     {
       role: 'assistant',
@@ -19,8 +19,6 @@ export default function ChatTab({ project, onProjectUpdate }: Props) {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [planning, setPlanning] = useState(false);
-
-  void onProjectUpdate;
 
   async function sendMessage() {
     if (!input.trim() || loading) return;
@@ -32,12 +30,14 @@ export default function ChatTab({ project, onProjectUpdate }: Props) {
     setLoading(true);
 
     try {
-      const data = await api.post<{ reply: string }>('/ai/chat', {
-        projectId: project.id,
+      const result = await api.post<{ reply: string }>('/ai/chat', {
+        projectId,
         message: userMsg.content,
-        history: messages,
+        history: nextHistory
+          .filter(m => m.role !== 'system')
+          .map(m => ({ role: m.role, content: m.content })),
       });
-      setMessages(prev => [...prev, { role: 'assistant', content: data.reply }]);
+      setMessages(prev => [...prev, { role: 'assistant', content: result.reply }]);
     } catch {
       setMessages(prev => [...prev, {
         role: 'assistant',
@@ -52,10 +52,10 @@ export default function ChatTab({ project, onProjectUpdate }: Props) {
     if (planning) return;
     setPlanning(true);
     try {
-      await api.post('/ai/plan', { projectId: project.id });
+      await onGeneratePlan?.();
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: 'Plan completo solicitado. Cuando termine la generación, actualiza la página para ver resultados.',
+        content: 'Plan completo solicitado. Cuando termine la generación, verás los resultados en esta página.',
       }]);
     } catch {
       setMessages(prev => [...prev, {
