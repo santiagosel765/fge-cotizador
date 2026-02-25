@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useRef } from 'react';
-import type { Map as LeafletMap } from 'leaflet';
+import type { Map as LeafletMapInstance } from 'leaflet';
 
 interface Props {
   latitude?: number;
@@ -10,7 +10,7 @@ interface Props {
 
 export default function LeafletMap({ latitude, longitude, onLocationChange }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<LeafletMap | null>(null);
+  const mapRef = useRef<LeafletMapInstance | null>(null);
   const markerRef = useRef<ReturnType<typeof import('leaflet')['marker']> | null>(null);
 
   useEffect(() => {
