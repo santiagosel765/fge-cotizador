@@ -46,7 +46,7 @@ export interface Material {
   legacyCode: string;
   name: string;
   unit: string;
-  unitPriceGtq: number;
+  unitPriceGtq: number | string;
   category?: MaterialCategory;
 }
 

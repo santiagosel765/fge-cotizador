@@ -167,7 +167,7 @@ function ProjectPageContent() {
               materialId: material.id,
               name: material.name,
               unit: material.unit,
-              unitPriceGtq: material.unitPriceGtq,
+              unitPriceGtq: Number(material.unitPriceGtq),
               quantity: suggested.quantity,
             });
           }
@@ -275,7 +275,7 @@ function ProjectPageContent() {
           materialId: material.id,
           name: material.name,
           unit: material.unit,
-          unitPriceGtq: material.unitPriceGtq,
+          unitPriceGtq: Number(material.unitPriceGtq),
           quantity,
         },
       ];
@@ -649,9 +649,9 @@ function ProjectPageContent() {
                   {cart.map(item => (
                     <tr key={item.materialId} className="bg-white border-b hover:bg-slate-50">
                       <td className="px-6 py-4 font-medium text-slate-900">{item.name}<br /><span className="text-xs text-slate-500">{item.unit}</span></td>
-                      <td className="px-6 py-4 text-right">Q{item.unitPriceGtq.toFixed(2)}</td>
+                      <td className="px-6 py-4 text-right">Q{Number(item.unitPriceGtq).toFixed(2)}</td>
                       <td className="px-6 py-4 text-center">{item.quantity}</td>
-                      <td className="px-6 py-4 text-right font-semibold">Q{(item.unitPriceGtq * item.quantity).toFixed(2)}</td>
+                      <td className="px-6 py-4 text-right font-semibold">Q{(Number(item.unitPriceGtq) * item.quantity).toFixed(2)}</td>
                       <td className="px-6 py-4 text-center">
                         <button onClick={() => removeMaterial(item.materialId)} className="text-red-500 hover:text-red-700">🗑️</button>
                       </td>
