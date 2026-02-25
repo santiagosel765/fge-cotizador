@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import type { MaterialCategory, Project } from '@/types/project';
@@ -44,7 +44,7 @@ function ProjectPageContent() {
   const [renderError, setRenderError] = useState('');
   const [panoLoading, setPanoLoading] = useState(false);
   const [panoError, setPanoError] = useState('');
-  const [autoGenerateTriggered, setAutoGenerateTriggered] = useState(false);
+  const autoGenerateCalledRef = useRef(false);
 
   const [planner, setPlanner] = useState({
     projectType: '',
@@ -104,17 +104,13 @@ function ProjectPageContent() {
           keyMaterials: '',
           additionalDetails: projectData.userDescription ?? '',
         });
-
-        if (searchParams.get('autoGenerate') === 'true') {
-          setAutoGenerateTriggered(prev => prev || true);
-        }
       })
       .finally(() => setLoading(false));
   }, [id, searchParams]);
 
   const allMaterials = useMemo(() => categories.flatMap(category => category.materials ?? []), [categories]);
 
-  const subtotal = useMemo(() => cart.reduce((acc, item) => acc + item.unitPriceGtq * item.quantity, 0), [cart]);
+  const subtotal = useMemo(() => cart.reduce((acc, item) => acc + Number(item.unitPriceGtq) * item.quantity, 0), [cart]);
   const iva = subtotal * IVA_RATE;
   const total = subtotal + iva;
 
@@ -250,11 +246,18 @@ function ProjectPageContent() {
   }
 
   useEffect(() => {
-    if (autoGenerateTriggered && project && categories.length > 0) {
+    if (
+      loading === false
+      && project !== null
+      && categories.length > 0
+      && searchParams.get('autoGenerate') === 'true'
+      && autoGenerateCalledRef.current === false
+    ) {
+      autoGenerateCalledRef.current = true;
       handleGeneratePlan();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoGenerateTriggered, project, categories]);
+  }, [loading, project, categories]);
 
   function addMaterial() {
     const material = allMaterials.find(m => m.id === selectedMaterialId);
