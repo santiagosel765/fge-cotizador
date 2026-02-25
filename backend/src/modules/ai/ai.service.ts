@@ -208,4 +208,121 @@ INSTRUCCIONES PARA suggestedMaterials:
       suggestedMaterials: parsed.suggestedMaterials ?? [],
     };
   }
+
+  async generateRender(projectId: string): Promise<{ imageUrl: string }> {
+    const project = await this.projectsService.findOne(projectId);
+    if (!project) throw new NotFoundException('Proyecto no encontrado');
+
+    const renderPrompt = (project as any).renderPrompt;
+    if (!renderPrompt) {
+      throw new Error('El proyecto no tiene prompt de render. Genera el plan primero.');
+    }
+
+    const model = this.genAI.getGenerativeModel({
+      model: 'gemini-2.0-flash-exp',
+      generationConfig: {
+        responseModalities: ['IMAGE', 'TEXT'],
+      } as any,
+    });
+
+    const result = await model.generateContent(renderPrompt);
+
+    let imageDataUrl = '';
+    for (const part of result.response.candidates?.[0]?.content?.parts ?? []) {
+      if ((part as any).inlineData) {
+        const { mimeType, data } = (part as any).inlineData;
+        imageDataUrl = `data:${mimeType};base64,${data}`;
+        break;
+      }
+    }
+
+    if (!imageDataUrl) {
+      throw new Error('Gemini no devolvió imagen. Intenta de nuevo.');
+    }
+
+    try {
+      const existing = await this.assetsRepo.findOne({
+        where: { projectId, assetType: AiAssetType.RENDER },
+      });
+      if (existing) {
+        existing.storageUrl = imageDataUrl;
+        existing.status = AiAssetStatus.READY;
+        existing.prompt = renderPrompt;
+        await this.assetsRepo.save(existing);
+      } else {
+        const asset = this.assetsRepo.create({
+          projectId,
+          assetType: AiAssetType.RENDER,
+          storageUrl: imageDataUrl,
+          status: AiAssetStatus.READY,
+          prompt: renderPrompt,
+          modelUsed: 'gemini-2.0-flash-exp',
+        });
+        await this.assetsRepo.save(asset);
+      }
+    } catch (err) {
+      this.logger.warn('No se pudo guardar render asset: ' + String(err));
+    }
+
+    return { imageUrl: imageDataUrl };
+  }
+
+  async generatePanorama(projectId: string): Promise<{ imageUrl: string }> {
+    const project = await this.projectsService.findOne(projectId);
+    if (!project) throw new NotFoundException('Proyecto no encontrado');
+
+    const panoPrompt = (project as any).panoPrompt;
+    if (!panoPrompt) {
+      throw new Error('El proyecto no tiene prompt de panorama. Genera el plan primero.');
+    }
+
+    const model = this.genAI.getGenerativeModel({
+      model: 'gemini-2.0-flash-exp',
+      generationConfig: {
+        responseModalities: ['IMAGE', 'TEXT'],
+      } as any,
+    });
+
+    const result = await model.generateContent(panoPrompt);
+
+    let imageDataUrl = '';
+    for (const part of result.response.candidates?.[0]?.content?.parts ?? []) {
+      if ((part as any).inlineData) {
+        const { mimeType, data } = (part as any).inlineData;
+        imageDataUrl = `data:${mimeType};base64,${data}`;
+        break;
+      }
+    }
+
+    if (!imageDataUrl) {
+      throw new Error('Gemini no devolvió imagen para el panorama. Intenta de nuevo.');
+    }
+
+    try {
+      const existing = await this.assetsRepo.findOne({
+        where: { projectId, assetType: AiAssetType.PANORAMA },
+      });
+      if (existing) {
+        existing.storageUrl = imageDataUrl;
+        existing.status = AiAssetStatus.READY;
+        existing.prompt = panoPrompt;
+        await this.assetsRepo.save(existing);
+      } else {
+        const asset = this.assetsRepo.create({
+          projectId,
+          assetType: AiAssetType.PANORAMA,
+          storageUrl: imageDataUrl,
+          status: AiAssetStatus.READY,
+          prompt: panoPrompt,
+          modelUsed: 'gemini-2.0-flash-exp',
+        });
+        await this.assetsRepo.save(asset);
+      }
+    } catch (err) {
+      this.logger.warn('No se pudo guardar panorama asset: ' + String(err));
+    }
+
+    return { imageUrl: imageDataUrl };
+  }
+
 }

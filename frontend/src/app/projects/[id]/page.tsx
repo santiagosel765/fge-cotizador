@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { Suspense, useEffect, useMemo, useState } from 'react';
+import { useParams, useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import type { MaterialCategory, Project } from '@/types/project';
 import MapSection from './components/MapSection';
@@ -17,8 +17,9 @@ interface CartItem {
 
 const IVA_RATE = 0.12;
 
-export default function ProjectPage() {
+function ProjectPageContent() {
   const { id } = useParams<{ id: string }>();
+  const searchParams = useSearchParams();
   const [project, setProject] = useState<Project | null>(null);
   const [categories, setCategories] = useState<MaterialCategory[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -39,6 +40,11 @@ export default function ProjectPage() {
   const [quotationSaving, setQuotationSaving] = useState(false);
   const [quotationSaved, setQuotationSaved] = useState(false);
   const [quotationError, setQuotationError] = useState('');
+  const [renderLoading, setRenderLoading] = useState(false);
+  const [renderError, setRenderError] = useState('');
+  const [panoLoading, setPanoLoading] = useState(false);
+  const [panoError, setPanoError] = useState('');
+  const [autoGenerateTriggered, setAutoGenerateTriggered] = useState(false);
 
   const [planner, setPlanner] = useState({
     projectType: '',
@@ -98,9 +104,13 @@ export default function ProjectPage() {
           keyMaterials: '',
           additionalDetails: projectData.userDescription ?? '',
         });
+
+        if (searchParams.get('autoGenerate') === 'true') {
+          setAutoGenerateTriggered(prev => prev || true);
+        }
       })
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [id, searchParams]);
 
   const allMaterials = useMemo(() => categories.flatMap(category => category.materials ?? []), [categories]);
 
@@ -208,6 +218,43 @@ export default function ProjectPage() {
       setQuotationSaving(false);
     }
   }
+
+  async function handleGenerateRender() {
+    if (!project) return;
+    setRenderLoading(true);
+    setRenderError('');
+    try {
+      await api.post(`/ai/render/${project.id}`, {});
+      const updated = await api.get<Project>(`/projects/${project.id}`);
+      setProject(updated);
+    } catch (err) {
+      setRenderError(err instanceof Error ? err.message : 'Error generando render');
+    } finally {
+      setRenderLoading(false);
+    }
+  }
+
+  async function handleGeneratePanorama() {
+    if (!project) return;
+    setPanoLoading(true);
+    setPanoError('');
+    try {
+      await api.post(`/ai/panorama/${project.id}`, {});
+      const updated = await api.get<Project>(`/projects/${project.id}`);
+      setProject(updated);
+    } catch (err) {
+      setPanoError(err instanceof Error ? err.message : 'Error generando panorama');
+    } finally {
+      setPanoLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (autoGenerateTriggered && project && categories.length > 0) {
+      handleGeneratePlan();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoGenerateTriggered, project, categories]);
 
   function addMaterial() {
     const material = allMaterials.find(m => m.id === selectedMaterialId);
@@ -478,30 +525,94 @@ export default function ProjectPage() {
         </section>
 
         <section className="bg-white p-6 rounded-xl shadow-lg">
-          <h2 className="text-2xl font-bold mb-4">🖼️ Render Fotorrealista</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-2xl font-bold">🖼️ Render Fotorrealista</h2>
+            {!render && project.renderPrompt && (
+              <button
+                onClick={handleGenerateRender}
+                disabled={renderLoading}
+                className="bg-purple-600 hover:bg-purple-700 disabled:bg-purple-300 
+                   text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors"
+              >
+                {renderLoading ? '⏳ Generando...' : '✨ Generar Render'}
+              </button>
+            )}
+          </div>
           {render ? (
             <img src={render} alt="Render fotorrealista" className="w-full rounded-lg" />
           ) : (
             <div className="flex flex-col items-center justify-center h-64 bg-gradient-to-b 
                     from-slate-100 to-slate-200 rounded-lg border-2 border-dashed border-slate-300">
-              <span className="text-5xl mb-3">🖼️</span>
-              <p className="text-slate-500 text-sm font-medium">Render fotorrealista</p>
-              <p className="text-slate-400 text-xs mt-1">Disponible en versión futura</p>
+              {renderLoading ? (
+                <>
+                  <div className="animate-spin rounded-full h-10 w-10 border-4 
+                          border-purple-500 border-t-transparent mb-3" />
+                  <p className="text-slate-600 text-sm font-medium">
+                    Generando render fotorrealista...
+                  </p>
+                  <p className="text-slate-400 text-xs mt-1">Puede tardar 30-60 segundos</p>
+                </>
+              ) : (
+                <>
+                  <span className="text-5xl mb-3">🖼️</span>
+                  <p className="text-slate-500 text-sm font-medium">
+                    {project.renderPrompt
+                      ? 'Haz clic en "Generar Render" para crear la imagen'
+                      : 'Genera el plan primero para activar el render'}
+                  </p>
+                </>
+              )}
             </div>
+          )}
+          {renderError && (
+            <p className="text-red-600 text-sm mt-2 bg-red-50 border border-red-200 
+                  rounded-lg px-3 py-2">⚠️ {renderError}</p>
           )}
         </section>
 
         <section className="bg-white p-6 rounded-xl shadow-lg">
-          <h2 className="text-2xl font-bold mb-4">🌐 Tour Virtual 360°</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-2xl font-bold">🌐 Tour Virtual 360°</h2>
+            {!pano && project.panoPrompt && (
+              <button
+                onClick={handleGeneratePanorama}
+                disabled={panoLoading}
+                className="bg-teal-600 hover:bg-teal-700 disabled:bg-teal-300 
+                   text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors"
+              >
+                {panoLoading ? '⏳ Generando...' : '✨ Generar Tour 360°'}
+              </button>
+            )}
+          </div>
           {pano ? (
             <img src={pano} alt="Tour virtual 360°" className="w-full rounded-lg" />
           ) : (
             <div className="flex flex-col items-center justify-center h-64 bg-gradient-to-b 
                     from-blue-50 to-blue-100 rounded-lg border-2 border-dashed border-blue-200">
-              <span className="text-5xl mb-3">🌐</span>
-              <p className="text-slate-500 text-sm font-medium">Tour Virtual 360°</p>
-              <p className="text-slate-400 text-xs mt-1">Disponible en versión futura</p>
+              {panoLoading ? (
+                <>
+                  <div className="animate-spin rounded-full h-10 w-10 border-4 
+                          border-teal-500 border-t-transparent mb-3" />
+                  <p className="text-slate-600 text-sm font-medium">
+                    Generando tour virtual 360°...
+                  </p>
+                  <p className="text-slate-400 text-xs mt-1">Puede tardar 30-60 segundos</p>
+                </>
+              ) : (
+                <>
+                  <span className="text-5xl mb-3">🌐</span>
+                  <p className="text-slate-500 text-sm font-medium">
+                    {project.panoPrompt
+                      ? 'Haz clic en "Generar Tour 360°" para crear la visualización'
+                      : 'Genera el plan primero para activar el tour'}
+                  </p>
+                </>
+              )}
             </div>
+          )}
+          {panoError && (
+            <p className="text-red-600 text-sm mt-2 bg-red-50 border border-red-200 
+                  rounded-lg px-3 py-2">⚠️ {panoError}</p>
           )}
         </section>
 
@@ -621,5 +732,18 @@ export default function ProjectPage() {
         </section>
       </main>
     </div>
+  );
+}
+
+export default function ProjectPage() {
+  return (
+    <Suspense fallback={(
+      <div className="min-h-screen flex items-center justify-center text-slate-500">
+        Cargando...
+      </div>
+    )}
+    >
+      <ProjectPageContent />
+    </Suspense>
   );
 }

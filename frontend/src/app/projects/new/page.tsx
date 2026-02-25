@@ -93,7 +93,7 @@ export default function NewProjectPage() {
         name: fields.projectType,
         userDescription,
       });
-      router.push(`/projects/${project.id}`);
+      router.push(`/projects/${project.id}?autoGenerate=true`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al crear proyecto');
     } finally {
