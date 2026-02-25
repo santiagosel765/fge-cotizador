@@ -35,6 +35,7 @@ export default function ProjectPage() {
   }>>([]);
   const [planLoading, setPlanLoading] = useState(false);
   const [planError, setPlanError] = useState('');
+  const [planStep, setPlanStep] = useState('');
   const [quotationSaving, setQuotationSaving] = useState(false);
   const [quotationSaved, setQuotationSaved] = useState(false);
   const [quotationError, setQuotationError] = useState('');
@@ -111,6 +112,7 @@ export default function ProjectPage() {
     if (!project) return;
     setPlanLoading(true);
     setPlanError('');
+    setPlanStep('Actualizando proyecto...');
 
     const userDescription = [
       planner.projectType && `Tipo: ${planner.projectType}`,
@@ -121,33 +123,64 @@ export default function ProjectPage() {
     ].filter(Boolean).join('. ');
 
     try {
-      // Actualizar descripción del proyecto (best-effort, no bloquea el plan)
+      // Actualizar descripción (best-effort)
       try {
         await api.patch<Project>(`/projects/${project.id}`, {
           name: planner.projectType || project.name,
           userDescription: userDescription || project.userDescription,
         });
       } catch {
-        // Si el patch falla, continuar igual con el plan
+        // Si falla el patch, continuar
       }
 
-      // Generar plan con IA
+      setPlanStep('🧠 Analizando proyecto con IA... (puede tardar 30-60s)');
+
       const result = await api.post<{
         detailedConcept: string;
         blueprintSvg: string;
         suggestedMaterials: Array<{ legacyCode: string; quantity: number; reason: string }>;
       }>('/ai/plan', { projectId: project.id });
 
+      setPlanStep('✅ Plan generado, cargando resultados...');
+
       setBlueprintSvg(result.blueprintSvg ?? '');
       setDetailedConcept(result.detailedConcept ?? '');
       setSuggestedMaterials(result.suggestedMaterials ?? []);
 
-      // Recargar proyecto
+      // Auto-poblar carrito con materiales sugeridos
+      if (result.suggestedMaterials && result.suggestedMaterials.length > 0) {
+        const newCartItems: CartItem[] = [];
+        for (const suggested of result.suggestedMaterials) {
+          const material = allMaterials.find(m => m.legacyCode === suggested.legacyCode);
+          if (material) {
+            newCartItems.push({
+              materialId: material.id,
+              name: material.name,
+              unit: material.unit,
+              unitPriceGtq: material.unitPriceGtq,
+              quantity: suggested.quantity,
+            });
+          }
+        }
+        if (newCartItems.length > 0) {
+          setCart(newCartItems);
+        }
+      }
+
       const updated = await api.get<Project>(`/projects/${project.id}`);
       setProject(updated);
+      setPlanStep('');
+
+      // Scroll suave al plano después de generar
+      setTimeout(() => {
+        document.getElementById('section-blueprint')?.scrollIntoView({
+          behavior: 'smooth', block: 'start',
+        });
+      }, 300);
 
     } catch (err) {
       setPlanError(err instanceof Error ? err.message : 'Error generando plan con IA');
+      setPlanStep('');
     } finally {
       setPlanLoading(false);
     }
@@ -367,54 +400,109 @@ export default function ProjectPage() {
             <button
               onClick={handleGeneratePlan}
               disabled={planLoading}
-              className="mt-6 w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-extrabold py-4 rounded-xl text-lg transition-colors shadow-lg"
+              className="mt-6 w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 
+             text-white font-extrabold py-4 rounded-xl text-lg transition-colors shadow-lg"
             >
               {planLoading ? '⏳ Generando plan con IA...' : '✨ Generar Plan con IA'}
             </button>
+            {planStep && (
+              <div className="mt-3 flex items-center gap-2 bg-blue-50 border border-blue-200 
+                  rounded-lg px-4 py-3">
+                {planLoading && (
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 
+                      border-blue-500 border-t-transparent flex-shrink-0" />
+                )}
+                <p className="text-sm text-blue-700">{planStep}</p>
+              </div>
+            )}
             {planError && (
-              <p className="text-red-600 text-sm mt-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+              <p className="text-red-600 text-sm mt-2 bg-red-50 border border-red-200 
+                rounded-lg px-3 py-2">
                 ⚠️ {planError}
               </p>
             )}
           </div>
         </section>
 
-        <section className="bg-white p-6 rounded-xl shadow-lg">
-          <h2 className="text-2xl font-bold mb-4">📐 Plano Arquitectónico 2D</h2>
-          {/* Área del plano */}
+        <section id="section-blueprint" className="bg-white p-6 rounded-xl shadow-lg">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-2xl font-bold">📐 Plano Arquitectónico 2D</h2>
+            {(blueprintSvg || project.aiAssets?.find(a => a.assetType === 'blueprint')) && (
+              <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium">
+                ✓ Generado
+              </span>
+            )}
+          </div>
+
           {blueprintSvg ? (
-            <div
-              className="w-full overflow-auto rounded-lg border border-slate-200 bg-white p-2"
-              dangerouslySetInnerHTML={{ __html: blueprintSvg }}
-            />
+            <div className="w-full overflow-auto rounded-lg border border-slate-200 bg-white p-4"
+              style={{ minHeight: '400px' }}>
+              <div
+                className="w-full"
+                style={{ lineHeight: 0 }}
+                dangerouslySetInnerHTML={{ __html: blueprintSvg }}
+              />
+            </div>
           ) : project.aiAssets?.find(a => a.assetType === 'blueprint')?.storageUrl ? (
-            <div
-              className="w-full overflow-auto rounded-lg border border-slate-200 bg-white p-2"
-              dangerouslySetInnerHTML={{
-                __html: project.aiAssets.find(a => a.assetType === 'blueprint')!.storageUrl ?? '',
-              }}
-            />
+            <div className="w-full overflow-auto rounded-lg border border-slate-200 bg-white p-4"
+              style={{ minHeight: '400px' }}>
+              <div
+                className="w-full"
+                style={{ lineHeight: 0 }}
+                dangerouslySetInnerHTML={{
+                  __html: project.aiAssets.find(a => a.assetType === 'blueprint')!.storageUrl ?? '',
+                }}
+              />
+            </div>
           ) : (
-            <div className="flex items-center justify-center h-48 bg-slate-100 rounded-lg">
-              <p className="text-slate-400 text-sm">Genera tu proyecto con IA para ver el plano</p>
+            <div className="flex flex-col items-center justify-center h-48 bg-slate-100 
+                    rounded-lg border-2 border-dashed border-slate-300">
+              <span className="text-4xl mb-2">📐</span>
+              <p className="text-slate-500 text-sm font-medium">
+                Genera tu proyecto con IA para ver el plano
+              </p>
+              <p className="text-slate-400 text-xs mt-1">
+                El plano SVG aparecerá aquí
+              </p>
             </div>
           )}
+
           {detailedConcept && (
             <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
               <h4 className="font-semibold text-blue-800 mb-2">📋 Concepto del Proyecto</h4>
-              <p className="text-sm text-slate-700 whitespace-pre-line">{detailedConcept}</p>
+              <p className="text-sm text-slate-700 whitespace-pre-line leading-relaxed">
+                {detailedConcept}
+              </p>
             </div>
           )}
         </section>
 
         <section className="bg-white p-6 rounded-xl shadow-lg">
           <h2 className="text-2xl font-bold mb-4">🖼️ Render Fotorrealista</h2>
-          {render ? <img src={render} alt="Render" className="w-full rounded-lg" /> : <div className="h-72 bg-slate-200 rounded-lg" />}
+          {render ? (
+            <img src={render} alt="Render fotorrealista" className="w-full rounded-lg" />
+          ) : (
+            <div className="flex flex-col items-center justify-center h-64 bg-gradient-to-b 
+                    from-slate-100 to-slate-200 rounded-lg border-2 border-dashed border-slate-300">
+              <span className="text-5xl mb-3">🖼️</span>
+              <p className="text-slate-500 text-sm font-medium">Render fotorrealista</p>
+              <p className="text-slate-400 text-xs mt-1">Disponible en versión futura</p>
+            </div>
+          )}
         </section>
 
         <section className="bg-white p-6 rounded-xl shadow-lg">
           <h2 className="text-2xl font-bold mb-4">🌐 Tour Virtual 360°</h2>
-          {pano ? <img src={pano} alt="Tour virtual 360" className="w-full rounded-lg" /> : <div className="h-72 bg-slate-200 rounded-lg" />}
+          {pano ? (
+            <img src={pano} alt="Tour virtual 360°" className="w-full rounded-lg" />
+          ) : (
+            <div className="flex flex-col items-center justify-center h-64 bg-gradient-to-b 
+                    from-blue-50 to-blue-100 rounded-lg border-2 border-dashed border-blue-200">
+              <span className="text-5xl mb-3">🌐</span>
+              <p className="text-slate-500 text-sm font-medium">Tour Virtual 360°</p>
+              <p className="text-slate-400 text-xs mt-1">Disponible en versión futura</p>
+            </div>
+          )}
         </section>
 
         <section className="space-y-6">
