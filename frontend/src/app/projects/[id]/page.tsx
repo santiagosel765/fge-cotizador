@@ -102,7 +102,7 @@ function ProjectPageContent() {
           dimensions: '',
           mainSpaces: '',
           keyMaterials: '',
-          additionalDetails: projectData.userDescription ?? '',
+          additionalDetails: '',
         });
       })
       .finally(() => setLoading(false));
@@ -125,15 +125,15 @@ function ProjectPageContent() {
       planner.dimensions && `Dimensiones: ${planner.dimensions}`,
       planner.mainSpaces && `Espacios: ${planner.mainSpaces}`,
       planner.keyMaterials && `Materiales: ${planner.keyMaterials}`,
-      planner.additionalDetails && `Detalles: ${planner.additionalDetails}`,
+      planner.additionalDetails && `Detalles adicionales: ${planner.additionalDetails}`,
     ].filter(Boolean).join('. ');
 
     try {
       // Actualizar descripción (best-effort)
       try {
         await api.patch<Project>(`/projects/${project.id}`, {
-          name: planner.projectType || project.name,
-          userDescription: userDescription || project.userDescription,
+          ...(planner.projectType && { name: planner.projectType }),
+          ...(userDescription && { userDescription }),
         });
       } catch {
         // Si falla el patch, continuar
