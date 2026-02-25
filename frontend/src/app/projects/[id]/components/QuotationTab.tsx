@@ -58,7 +58,7 @@ export default function QuotationTab({ project }: Props) {
     }
   }
 
-  const subtotal = cart.reduce((sum, i) => sum + i.material.unitPriceGtq * i.quantity, 0);
+  const subtotal = cart.reduce((sum, i) => sum + Number(i.material.unitPriceGtq) * i.quantity, 0);
   const iva = subtotal * IVA_RATE;
   const total = subtotal + iva;
 
@@ -130,7 +130,7 @@ export default function QuotationTab({ project }: Props) {
                 </div>
                 <div className="flex items-center gap-3 ml-3">
                   <span className="text-sm font-semibold text-gray-900">
-                    Q{material.unitPriceGtq.toFixed(2)}
+                    Q{Number(material.unitPriceGtq).toFixed(2)}
                   </span>
                   <button
                     onClick={() => addToCart(material)}
@@ -167,7 +167,7 @@ export default function QuotationTab({ project }: Props) {
                     />
                     <span className="text-xs text-gray-500">{item.material.unit}</span>
                     <span className="ml-auto text-xs font-semibold">
-                      Q{(item.material.unitPriceGtq * item.quantity).toFixed(2)}
+                      Q{(Number(item.material.unitPriceGtq) * item.quantity).toFixed(2)}
                     </span>
                   </div>
                 </div>
