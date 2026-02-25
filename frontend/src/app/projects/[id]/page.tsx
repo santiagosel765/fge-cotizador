@@ -47,6 +47,41 @@ export default function ProjectPage() {
     additionalDetails: '',
   });
 
+  const [assistantStep, setAssistantStep] = useState(0);
+
+  const PLANNER_QUESTIONS = [
+    {
+      question: '¿Tu proyecto es para una vivienda de un solo nivel?',
+      yesAction: () => setPlanner(prev => ({ ...prev, projectType: 'Vivienda de un solo nivel' })),
+      noAction: () => setPlanner(prev => ({ ...prev, projectType: 'Vivienda de dos niveles' })),
+    },
+    {
+      question: '¿Necesitas 2 o más dormitorios?',
+      yesAction: () => setPlanner(prev => ({ ...prev, mainSpaces: prev.mainSpaces ? `${prev.mainSpaces}, 2 dormitorios` : '2 dormitorios' })),
+      noAction: () => setPlanner(prev => ({ ...prev, mainSpaces: prev.mainSpaces ? `${prev.mainSpaces}, 1 dormitorio` : '1 dormitorio' })),
+    },
+    {
+      question: '¿Incluirá baño completo?',
+      yesAction: () => setPlanner(prev => ({ ...prev, mainSpaces: prev.mainSpaces ? `${prev.mainSpaces}, 1 baño completo` : '1 baño completo' })),
+      noAction: () => setPlanner(prev => ({ ...prev, mainSpaces: prev.mainSpaces ? `${prev.mainSpaces}, medio baño` : 'medio baño' })),
+    },
+    {
+      question: '¿Prefieres techo de lámina para optimizar costos?',
+      yesAction: () => setPlanner(prev => ({ ...prev, keyMaterials: prev.keyMaterials ? `${prev.keyMaterials}, techo de lámina` : 'techo de lámina' })),
+      noAction: () => setPlanner(prev => ({ ...prev, keyMaterials: prev.keyMaterials ? `${prev.keyMaterials}, techo de losa` : 'techo de losa' })),
+    },
+    {
+      question: '¿Usarás block de cemento en las paredes?',
+      yesAction: () => setPlanner(prev => ({ ...prev, keyMaterials: prev.keyMaterials ? `${prev.keyMaterials}, paredes de block` : 'paredes de block' })),
+      noAction: () => setPlanner(prev => ({ ...prev, keyMaterials: prev.keyMaterials ? `${prev.keyMaterials}, paredes de ladrillo` : 'paredes de ladrillo' })),
+    },
+  ];
+
+  function handlePlannerAnswer(action: () => void) {
+    action();
+    setAssistantStep(prev => prev + 1);
+  }
+
   useEffect(() => {
     Promise.all([
       api.get<Project>(`/projects/${id}`),
@@ -74,25 +109,29 @@ export default function ProjectPage() {
 
   async function handleGeneratePlan() {
     if (!project) return;
-
     setPlanLoading(true);
     setPlanError('');
 
     const userDescription = [
-      `Tipo de proyecto: ${planner.projectType}.`,
-      `Dimensiones generales: ${planner.dimensions || 'No especificadas'}.`,
-      `Espacios principales: ${planner.mainSpaces || 'No especificados'}.`,
-      `Materiales clave: ${planner.keyMaterials || 'No especificados'}.`,
-      `Detalles adicionales: ${planner.additionalDetails || 'Ninguno'}.`,
-    ].join(' ');
+      planner.projectType && `Tipo: ${planner.projectType}`,
+      planner.dimensions && `Dimensiones: ${planner.dimensions}`,
+      planner.mainSpaces && `Espacios: ${planner.mainSpaces}`,
+      planner.keyMaterials && `Materiales: ${planner.keyMaterials}`,
+      planner.additionalDetails && `Detalles: ${planner.additionalDetails}`,
+    ].filter(Boolean).join('. ');
 
     try {
-      const patchedProject = await api.patch<Project>(`/projects/${project.id}`, {
-        name: planner.projectType || project.name,
-        userDescription,
-      });
-      setProject(patchedProject);
+      // Actualizar descripción del proyecto (best-effort, no bloquea el plan)
+      try {
+        await api.patch<Project>(`/projects/${project.id}`, {
+          name: planner.projectType || project.name,
+          userDescription: userDescription || project.userDescription,
+        });
+      } catch {
+        // Si el patch falla, continuar igual con el plan
+      }
 
+      // Generar plan con IA
       const result = await api.post<{
         detailedConcept: string;
         blueprintSvg: string;
@@ -103,10 +142,12 @@ export default function ProjectPage() {
       setDetailedConcept(result.detailedConcept ?? '');
       setSuggestedMaterials(result.suggestedMaterials ?? []);
 
+      // Recargar proyecto
       const updated = await api.get<Project>(`/projects/${project.id}`);
       setProject(updated);
+
     } catch (err) {
-      setPlanError(err instanceof Error ? err.message : 'Error generando plan');
+      setPlanError(err instanceof Error ? err.message : 'Error generando plan con IA');
     } finally {
       setPlanLoading(false);
     }
@@ -201,36 +242,141 @@ export default function ProjectPage() {
       </header>
 
       <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 max-w-7xl">
-        <section className="bg-white p-6 rounded-xl shadow-lg">
-          <h2 className="text-2xl font-bold text-slate-800 mb-4">Planificador IA</h2>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-3">
-              <input className="w-full p-3 bg-slate-50 border rounded-lg" placeholder="Tipo de proyecto" value={planner.projectType} onChange={e => setPlanner(prev => ({ ...prev, projectType: e.target.value }))} />
-              <input className="w-full p-3 bg-slate-50 border rounded-lg" placeholder="Dimensiones generales" value={planner.dimensions} onChange={e => setPlanner(prev => ({ ...prev, dimensions: e.target.value }))} />
-              <input className="w-full p-3 bg-slate-50 border rounded-lg" placeholder="Espacios principales" value={planner.mainSpaces} onChange={e => setPlanner(prev => ({ ...prev, mainSpaces: e.target.value }))} />
-              <input className="w-full p-3 bg-slate-50 border rounded-lg" placeholder="Materiales clave" value={planner.keyMaterials} onChange={e => setPlanner(prev => ({ ...prev, keyMaterials: e.target.value }))} />
-              <textarea className="w-full p-3 bg-slate-50 border rounded-lg" rows={4} placeholder="Detalles adicionales" value={planner.additionalDetails} onChange={e => setPlanner(prev => ({ ...prev, additionalDetails: e.target.value }))} />
-            </div>
-            <aside className="bg-slate-50 border border-slate-200 p-4 rounded-xl">
-              <h3 className="text-lg font-bold">Asistente de Diseño</h3>
-              <ul className="mt-3 text-sm space-y-2 text-slate-600">
-                <li>• ¿Proyecto de un nivel? Sí / No</li>
-                <li>• ¿2 dormitorios o más? Sí / No</li>
-                <li>• ¿Incluye baño completo? Sí / No</li>
-                <li>• ¿Usar techo de lámina? Sí / No</li>
-              </ul>
-            </aside>
+        <section className="bg-white rounded-xl shadow-lg overflow-hidden">
+          {/* Header de sección */}
+          <div className="bg-gradient-to-r from-blue-700 to-blue-900 text-white px-6 py-5">
+            <h2 className="text-xl font-extrabold">🏗️ Planificador IA</h2>
+            <p className="text-blue-200 text-sm mt-1">
+              Ajusta los detalles de tu proyecto y genera un plan completo con IA.
+            </p>
           </div>
-          <button
-            onClick={handleGeneratePlan}
-            disabled={planLoading}
-            className="mt-5 w-full bg-indigo-600 text-white font-bold py-3 rounded-lg hover:bg-indigo-700 disabled:bg-indigo-300"
-          >
-            {planLoading ? '⏳ Generando plan con IA...' : '🔄 Regenerar con IA'}
-          </button>
-          {planError && (
-            <p className="text-red-600 text-sm mt-2">{planError}</p>
-          )}
+
+          <div className="p-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Columna izquierda: formulario */}
+              <div className="lg:col-span-2 space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1 uppercase tracking-wide">
+                      Tipo de Proyecto
+                    </label>
+                    <input
+                      className="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Ej: Vivienda, ampliación, muro"
+                      value={planner.projectType}
+                      onChange={e => setPlanner(prev => ({ ...prev, projectType: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1 uppercase tracking-wide">
+                      Dimensiones Generales
+                    </label>
+                    <input
+                      className="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Ej: 8×10 metros, 70m²"
+                      value={planner.dimensions}
+                      onChange={e => setPlanner(prev => ({ ...prev, dimensions: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1 uppercase tracking-wide">
+                    Espacios Principales
+                  </label>
+                  <input
+                    className="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Ej: 2 dormitorios, 1 baño, sala-comedor"
+                    value={planner.mainSpaces}
+                    onChange={e => setPlanner(prev => ({ ...prev, mainSpaces: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1 uppercase tracking-wide">
+                    Materiales Clave
+                  </label>
+                  <input
+                    className="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Ej: Block, lámina, piso cerámico"
+                    value={planner.keyMaterials}
+                    onChange={e => setPlanner(prev => ({ ...prev, keyMaterials: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1 uppercase tracking-wide">
+                    Detalles Adicionales
+                  </label>
+                  <textarea
+                    className="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                    rows={3}
+                    placeholder="Ej: Acabados sencillos, patio pequeño"
+                    value={planner.additionalDetails}
+                    onChange={e => setPlanner(prev => ({ ...prev, additionalDetails: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              {/* Columna derecha: Asistente interactivo */}
+              <aside className="bg-slate-50 border border-slate-200 rounded-xl p-5 space-y-4 h-fit">
+                <div>
+                  <h3 className="text-lg font-bold text-slate-800">🏗️ Asistente de Diseño</h3>
+                  <p className="text-xs text-slate-500 mt-0.5">Responde para refinar tu proyecto.</p>
+                </div>
+
+                {assistantStep < PLANNER_QUESTIONS.length ? (
+                  <div className="space-y-3">
+                    <p className="text-sm font-medium text-slate-700 leading-snug">
+                      {PLANNER_QUESTIONS[assistantStep].question}
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handlePlannerAnswer(PLANNER_QUESTIONS[assistantStep].yesAction)}
+                        className="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-2.5 px-3 rounded-lg text-sm transition-colors"
+                      >
+                        ✓ Sí
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handlePlannerAnswer(PLANNER_QUESTIONS[assistantStep].noAction)}
+                        className="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-2.5 px-3 rounded-lg text-sm transition-colors"
+                      >
+                        ✗ No
+                      </button>
+                    </div>
+                    <p className="text-xs text-slate-400 text-center">
+                      Pregunta {assistantStep + 1} de {PLANNER_QUESTIONS.length}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="text-center space-y-3 py-2">
+                    <span className="text-3xl">✅</span>
+                    <p className="text-sm text-green-700 font-semibold">¡Proyecto definido!</p>
+                    <p className="text-xs text-slate-500">Ajusta los campos si necesitas y genera el plan.</p>
+                    <button
+                      type="button"
+                      onClick={() => setAssistantStep(0)}
+                      className="text-xs text-blue-600 hover:text-blue-800 underline"
+                    >
+                      ↺ Repetir preguntas
+                    </button>
+                  </div>
+                )}
+              </aside>
+            </div>
+
+            <button
+              onClick={handleGeneratePlan}
+              disabled={planLoading}
+              className="mt-6 w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-extrabold py-4 rounded-xl text-lg transition-colors shadow-lg"
+            >
+              {planLoading ? '⏳ Generando plan con IA...' : '✨ Generar Plan con IA'}
+            </button>
+            {planError && (
+              <p className="text-red-600 text-sm mt-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                ⚠️ {planError}
+              </p>
+            )}
+          </div>
         </section>
 
         <section className="bg-white p-6 rounded-xl shadow-lg">
