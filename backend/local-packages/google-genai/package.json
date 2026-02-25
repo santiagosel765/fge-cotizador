@@ -1,0 +1,9 @@
+{
+  "name": "@google/genai",
+  "version": "0.0.0-local",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1"
+  }
+}
