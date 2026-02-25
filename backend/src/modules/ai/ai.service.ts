@@ -136,14 +136,85 @@ Genera una respuesta JSON con esta estructura exacta (sin markdown, solo JSON pu
 }
 
 INSTRUCCIONES PARA blueprintSvg:
-- Crear un SVG válido de plano arquitectónico 2D visto desde arriba
-- Incluir todas las habitaciones mencionadas en la descripción
-- Dibujar paredes con rectángulos o líneas
-- Etiquetar cada habitación con su nombre y metros cuadrados aproximados
-- Incluir puertas (arco de 90°) y ventanas (líneas dobles)
-- Usar colores: paredes #333, relleno habitaciones #f5f5f5, texto #222
-- Incluir cotas/medidas externas
-- El plano debe ser técnico pero comprensible
+- "blueprintSvg": Un SVG técnico 2D de planta arquitectónica completo y
+autocontenido. DEBES seguir estas reglas sin excepción:
+
+PASO 1 — ANALIZA EL PROYECTO:
+Lee la descripción del proyecto y extrae:
+- Tipo de proyecto (vivienda, local comercial, bodega, ampliación, etc.)
+- Dimensiones totales si se especifican, o estímalas según el tipo y espacios
+- Lista de ambientes requeridos y sus áreas aproximadas
+- Materiales y condicionantes mencionados
+
+PASO 2 — CALCULA EL VIEWBOX Y ESCALA:
+- Determina las dimensiones reales del proyecto en metros (ancho x largo)
+- Usa escala: 1 metro = 55 píxeles
+- Margen para cotas: 80px en cada lado
+- viewBox width = (ancho_metros * 55) + 160
+- viewBox height = (largo_metros * 55) + 160
+- TODOS los elementos del plano deben caber dentro de este viewBox
+- Si no conoces las dimensiones exactas, estímalas razonablemente según
+  el tipo de proyecto y los ambientes solicitados
+
+PASO 3 — APLICA PRINCIPIOS DE ARQUITECTURA SEGÚN EL TIPO DE PROYECTO:
+
+Para VIVIENDA (cualquier tamaño):
+- Zona social (sala, comedor, cocina) con acceso directo desde entrada y luz natural
+- Zona privada (dormitorios) separada de zona social, preferiblemente al fondo
+- Baño accesible desde pasillo o vestíbulo, NUNCA abriendo directamente a cocina
+- Pasillo de distribución de mínimo 90cm de ancho conectando todos los ambientes
+- Cocina con ventilación al exterior (ventana)
+- Cada dormitorio con ventana al exterior
+- Puerta principal en fachada frontal
+
+Para LOCAL COMERCIAL / NEGOCIO:
+- Área de atención al cliente amplia al frente con vitrina o acceso directo
+- Área de bodega o almacén al fondo
+- Servicios sanitarios al fondo con acceso desde área de trabajo
+- Acceso de mercancía diferenciado del acceso de clientes si el espacio lo permite
+
+Para BODEGA / DEPÓSITO:
+- Área de carga/descarga con acceso vehicular amplio
+- Espacio abierto sin divisiones internas innecesarias
+- Área administrativa pequeña si se solicitó
+- Baño de servicio en esquina
+
+Para AMPLIACIÓN / ANEXO:
+- Conectar con la estructura existente en el punto lógico
+- Respetar la circulación existente
+- Los nuevos ambientes deben ser funcionales por sí solos
+
+Para CUALQUIER TIPO:
+- La distribución debe ser LÓGICA y FUNCIONAL
+- No dejar ambientes sin acceso
+- No cruzar un ambiente para llegar a otro si se puede evitar
+- Las puertas deben tener espacio de batiente libre
+
+PASO 4 — GENERA EL SVG CON ESTOS ELEMENTOS:
+
+Paredes exteriores: rect con fill:#2d2d2d, calculado según dimensiones reales
+Paredes interiores: rect o line con stroke:#2d2d2d stroke-width:8
+Habitaciones/ambientes: rect con fill:#f0f0f0 para zonas sociales,
+  fill:#e8f0e8 para dormitorios, fill:#e8e8f5 para baños,
+  fill:#f5f0e8 para zonas de servicio/cocina
+Ventanas: rect pequeño con fill:#b3d9f7 stroke:#2d2d2d en el espesor de la pared
+Puertas: path de arco (quarter circle) + line de batiente, fill:none stroke:#555
+Etiquetas: text centrado en cada ambiente con nombre y área en m², font sans-serif
+Cotas exteriores: líneas fuera del plano con texto de dimensión en metros
+  (usa markers de flecha o líneas cortas perpendiculares como ticks)
+Título: texto en la parte inferior "PLANTA ARQUITECTÓNICA" y tipo de proyecto
+
+PASO 5 — VERIFICACIÓN ANTES DE GENERAR:
+- ¿Todos los ambientes caben en el viewBox calculado? Si no, aumenta el viewBox
+- ¿Cada ambiente tiene al menos una puerta de acceso?
+- ¿El baño/servicio sanitario tiene acceso desde pasillo?
+- ¿Las etiquetas de texto están dentro de su habitación?
+- ¿Las cotas están fuera de los muros exteriores?
+- ¿El SVG es completamente autocontenido (sin imports externos)?
+
+IMPORTANTE: Responde con SVG válido, sin markdown, sin backticks, sin explicaciones.
+El SVG debe ser el valor completo del campo blueprintSvg en el JSON.
+Escapa correctamente las comillas dentro del SVG para que sea JSON válido.
 
 INSTRUCCIONES PARA suggestedMaterials:
 - Solo usar legacyCodes del catálogo proporcionado
@@ -218,8 +289,11 @@ INSTRUCCIONES PARA suggestedMaterials:
       throw new Error('El proyecto no tiene prompt de render. Genera el plan primero.');
     }
 
+    const imageModel = this.configService.get<string>('GEMINI_MODEL_IMAGE')
+      ?? 'gemini-2.0-flash-preview-image-generation';
+
     const model = this.genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash-exp',
+      model: imageModel,
       generationConfig: {
         responseModalities: ['IMAGE', 'TEXT'],
       } as any,
@@ -256,7 +330,7 @@ INSTRUCCIONES PARA suggestedMaterials:
           storageUrl: imageDataUrl,
           status: AiAssetStatus.READY,
           prompt: renderPrompt,
-          modelUsed: 'gemini-2.0-flash-exp',
+          modelUsed: imageModel,
         });
         await this.assetsRepo.save(asset);
       }
@@ -276,8 +350,11 @@ INSTRUCCIONES PARA suggestedMaterials:
       throw new Error('El proyecto no tiene prompt de panorama. Genera el plan primero.');
     }
 
+    const imageModel = this.configService.get<string>('GEMINI_MODEL_IMAGE')
+      ?? 'gemini-2.0-flash-preview-image-generation';
+
     const model = this.genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash-exp',
+      model: imageModel,
       generationConfig: {
         responseModalities: ['IMAGE', 'TEXT'],
       } as any,
@@ -314,7 +391,7 @@ INSTRUCCIONES PARA suggestedMaterials:
           storageUrl: imageDataUrl,
           status: AiAssetStatus.READY,
           prompt: panoPrompt,
-          modelUsed: 'gemini-2.0-flash-exp',
+          modelUsed: imageModel,
         });
         await this.assetsRepo.save(asset);
       }
