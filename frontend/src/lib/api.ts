@@ -7,8 +7,14 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
       ...options,
     });
     if (!res.ok) {
-      const error = await res.text();
-      throw new Error(error || `HTTP ${res.status}`);
+      let message = `Error ${res.status}`;
+      try {
+        const err = await res.json() as { message?: string };
+        message = err.message ?? message;
+      } catch {
+        // ignorar body inválido
+      }
+      throw new Error(message);
     }
     return res.json() as Promise<T>;
   } catch (error) {
