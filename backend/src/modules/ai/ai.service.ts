@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -23,6 +24,7 @@ type PlanResponse = {
 export class AiService {
   private readonly logger = new Logger(AiService.name);
   private readonly genAI: GoogleGenerativeAI;
+  private readonly genAINew: GoogleGenAI;
   private readonly ANONYMOUS_USER_ID = '00000000-0000-0000-0000-000000000000';
 
   constructor(
@@ -37,6 +39,7 @@ export class AiService {
     const apiKey = this.configService.get<string>('GEMINI_API_KEY');
     if (!apiKey) throw new Error('GEMINI_API_KEY no está configurada en .env');
     this.genAI = new GoogleGenerativeAI(apiKey);
+    this.genAINew = new GoogleGenAI({ apiKey });
   }
 
   async chat(dto: ChatMessageDto): Promise<{ reply: string }> {
@@ -292,26 +295,30 @@ INSTRUCCIONES PARA suggestedMaterials:
     const imageModel = this.configService.get<string>('GEMINI_MODEL_IMAGE')
       ?? 'gemini-2.0-flash-preview-image-generation';
 
-    const model = this.genAI.getGenerativeModel({
-      model: imageModel,
-      generationConfig: {
-        responseModalities: ['IMAGE', 'TEXT'],
-      } as any,
-    });
-
-    const result = await model.generateContent(renderPrompt);
-
     let imageDataUrl = '';
-    for (const part of result.response.candidates?.[0]?.content?.parts ?? []) {
-      if ((part as any).inlineData) {
-        const { mimeType, data } = (part as any).inlineData;
-        imageDataUrl = `data:${mimeType};base64,${data}`;
-        break;
+    try {
+      const response = await this.genAINew.models.generateContent({
+        model: imageModel,
+        contents: renderPrompt,
+        config: {
+          responseModalities: ['TEXT', 'IMAGE'],
+        },
+      });
+
+      for (const part of response.candidates?.[0]?.content?.parts ?? []) {
+        if (part.inlineData?.data) {
+          const { mimeType, data } = part.inlineData;
+          imageDataUrl = `data:${mimeType ?? 'image/png'};base64,${data}`;
+          break;
+        }
       }
+    } catch (error) {
+      this.logger.error(`Error en Gemini generateRender: ${String(error)}`);
+      throw new Error('No se pudo generar el render. Intenta nuevamente.');
     }
 
     if (!imageDataUrl) {
-      throw new Error('Gemini no devolvió imagen. Intenta de nuevo.');
+      throw new Error('Gemini no devolvió imagen para el render. Intenta de nuevo.');
     }
 
     try {
@@ -322,6 +329,7 @@ INSTRUCCIONES PARA suggestedMaterials:
         existing.storageUrl = imageDataUrl;
         existing.status = AiAssetStatus.READY;
         existing.prompt = renderPrompt;
+        existing.modelUsed = imageModel;
         await this.assetsRepo.save(existing);
       } else {
         const asset = this.assetsRepo.create({
@@ -353,22 +361,26 @@ INSTRUCCIONES PARA suggestedMaterials:
     const imageModel = this.configService.get<string>('GEMINI_MODEL_IMAGE')
       ?? 'gemini-2.0-flash-preview-image-generation';
 
-    const model = this.genAI.getGenerativeModel({
-      model: imageModel,
-      generationConfig: {
-        responseModalities: ['IMAGE', 'TEXT'],
-      } as any,
-    });
-
-    const result = await model.generateContent(panoPrompt);
-
     let imageDataUrl = '';
-    for (const part of result.response.candidates?.[0]?.content?.parts ?? []) {
-      if ((part as any).inlineData) {
-        const { mimeType, data } = (part as any).inlineData;
-        imageDataUrl = `data:${mimeType};base64,${data}`;
-        break;
+    try {
+      const response = await this.genAINew.models.generateContent({
+        model: imageModel,
+        contents: panoPrompt,
+        config: {
+          responseModalities: ['TEXT', 'IMAGE'],
+        },
+      });
+
+      for (const part of response.candidates?.[0]?.content?.parts ?? []) {
+        if (part.inlineData?.data) {
+          const { mimeType, data } = part.inlineData;
+          imageDataUrl = `data:${mimeType ?? 'image/png'};base64,${data}`;
+          break;
+        }
       }
+    } catch (error) {
+      this.logger.error(`Error en Gemini generatePanorama: ${String(error)}`);
+      throw new Error('No se pudo generar el tour virtual. Intenta nuevamente.');
     }
 
     if (!imageDataUrl) {
@@ -383,6 +395,7 @@ INSTRUCCIONES PARA suggestedMaterials:
         existing.storageUrl = imageDataUrl;
         existing.status = AiAssetStatus.READY;
         existing.prompt = panoPrompt;
+        existing.modelUsed = imageModel;
         await this.assetsRepo.save(existing);
       } else {
         const asset = this.assetsRepo.create({
