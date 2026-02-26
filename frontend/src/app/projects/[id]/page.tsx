@@ -730,10 +730,9 @@ function ProjectPageContent() {
           </div>
         </section>
 
-        <section>
-          <ChatTab projectId={project.id} onGeneratePlan={handleGeneratePlan} />
-        </section>
       </main>
+
+      <ChatTab projectId={project.id} onGeneratePlan={handleGeneratePlan} />
     </div>
   );
 }
