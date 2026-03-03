@@ -87,4 +87,13 @@ export class ProjectsService {
     project.status = ProjectStatus.PLANNED;
     return this.projectsRepo.save(project);
   }
+
+  async saveTechnicalPlan(
+    projectId: string,
+    field: 'planoAcotadoSvg' | 'planoElectricoSvg' | 'planoFuerzaSvg'
+    | 'planoHidraulicoSvg' | 'planoDrenajesSvg' | 'planoCimentacionesSvg',
+    svgContent: string,
+  ): Promise<void> {
+    await this.projectsRepo.update(projectId, { [field]: svgContent });
+  }
 }

@@ -1,4 +1,4 @@
-import { Body, Controller, HttpCode, HttpStatus, Param, Post } from '@nestjs/common';
+import { BadRequestException, Body, Controller, HttpCode, HttpStatus, Param, Post } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ChatMessageDto } from './dto/chat-message.dto';
 import { GeneratePlanDto } from './dto/generate-plan.dto';
@@ -23,6 +23,20 @@ export class AiController {
     return this.service.generatePlan(dto);
   }
 
+
+  @Post('technical-plan/:projectId/:planType')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Generar plano técnico adicional (acotado/electrico/fuerza/hidraulico/drenajes/cimentaciones)' })
+  generateTechnicalPlan(
+    @Param('projectId') projectId: string,
+    @Param('planType') planType: string,
+  ) {
+    const validTypes = ['acotado', 'electrico', 'fuerza', 'hidraulico', 'drenajes', 'cimentaciones'];
+    if (!validTypes.includes(planType)) {
+      throw new BadRequestException(`Tipo de plano inválido: ${planType}`);
+    }
+    return this.service.generateTechnicalPlan(projectId, planType as any);
+  }
 
   @Post('render/:projectId')
   @HttpCode(HttpStatus.OK)
