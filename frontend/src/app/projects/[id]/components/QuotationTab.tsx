@@ -59,8 +59,8 @@ export default function QuotationTab({ project }: Props) {
   }
 
   const subtotal = cart.reduce((sum, i) => sum + Number(i.material.unitPriceGtq) * i.quantity, 0);
-  const iva = subtotal * IVA_RATE;
-  const total = subtotal + iva;
+  const iva = (subtotal * IVA_RATE) / (1 + IVA_RATE);
+  const total = subtotal;
 
   async function saveQuotation() {
     if (cart.length === 0) return;
@@ -119,7 +119,7 @@ export default function QuotationTab({ project }: Props) {
         <div className="lg:col-span-2 bg-white rounded-xl shadow-sm overflow-hidden">
           <div className="p-4 border-b">
             <h3 className="font-semibold text-gray-900">Catálogo de Materiales</h3>
-            <p className="text-xs text-gray-400">Precios en Quetzales (GTQ) sin IVA</p>
+            <p className="text-xs text-gray-400">Precios en Quetzales (GTQ) con IVA incluido</p>
           </div>
           <div className="divide-y max-h-96 overflow-y-auto">
             {filtered.map(material => (
@@ -129,8 +129,9 @@ export default function QuotationTab({ project }: Props) {
                   <p className="text-xs text-gray-500">{material.unit} · {material.legacyCode}</p>
                 </div>
                 <div className="flex items-center gap-3 ml-3">
-                  <span className="text-sm font-semibold text-gray-900">
+                  <span className="text-sm font-semibold text-gray-900 text-right">
                     Q{Number(material.unitPriceGtq).toFixed(2)}
+                    <span className="block text-[11px] font-normal text-gray-400">IVA incluido</span>
                   </span>
                   <button
                     onClick={() => addToCart(material)}
@@ -166,8 +167,9 @@ export default function QuotationTab({ project }: Props) {
                       className="w-16 border border-gray-300 rounded px-2 py-0.5 text-xs"
                     />
                     <span className="text-xs text-gray-500">{item.material.unit}</span>
-                    <span className="ml-auto text-xs font-semibold">
+                    <span className="ml-auto text-right text-xs font-semibold">
                       Q{(Number(item.material.unitPriceGtq) * item.quantity).toFixed(2)}
+                      <span className="block text-[11px] font-normal text-gray-400">IVA incluido</span>
                     </span>
                   </div>
                 </div>
@@ -176,15 +178,15 @@ export default function QuotationTab({ project }: Props) {
           </div>
           <div className="p-4 border-t space-y-1">
             <div className="flex justify-between text-xs text-gray-500">
-              <span>Subtotal</span>
+              <span>Subtotal (con IVA incluido)</span>
               <span>Q{subtotal.toFixed(2)}</span>
             </div>
             <div className="flex justify-between text-xs text-gray-500">
-              <span>IVA 12%</span>
+              <span>IVA 12% (incluido)</span>
               <span>Q{iva.toFixed(2)}</span>
             </div>
             <div className="flex justify-between text-sm font-bold text-gray-900 pt-1 border-t">
-              <span>Total</span>
+              <span>TOTAL</span>
               <span>Q{total.toFixed(2)}</span>
             </div>
             <button

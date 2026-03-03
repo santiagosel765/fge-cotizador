@@ -27,6 +27,7 @@ export interface Quotation {
   subtotalGtq: number;
   ivaGtq: number;
   totalGtq: number;
+  ivaIncluido: boolean;
   status: 'draft' | 'finalized';
   items?: QuotationItem[];
 }

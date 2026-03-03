@@ -1,33 +1,56 @@
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  try {
-    const res = await fetch(`${BASE_URL}${path}`, {
-      headers: { 'Content-Type': 'application/json' },
-      ...options,
-    });
-    if (!res.ok) {
-      let message = `Error ${res.status}`;
-      try {
-        const err = await res.json() as { message?: string };
-        message = err.message ?? message;
-      } catch {
-        // ignorar body inválido
+type RequestOptions = Omit<RequestInit, 'body'> & {
+  body?: unknown;
+};
+
+function buildUrl(path: string): string {
+  return `${BASE_URL}${path.startsWith('/') ? path : `/${path}`}`;
+}
+
+async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const { body, headers, ...rest } = options;
+
+  const response = await fetch(buildUrl(path), {
+    ...rest,
+    headers: {
+      'Content-Type': 'application/json',
+      ...headers,
+    },
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+  });
+
+  if (!response.ok) {
+    let message = `Error ${response.status}`;
+    try {
+      const errorBody = await response.json() as { message?: string | string[] };
+      if (Array.isArray(errorBody.message)) {
+        message = errorBody.message.join(', ');
+      } else if (errorBody.message) {
+        message = errorBody.message;
       }
-      throw new Error(message);
+    } catch {
+      // Ignorar errores de parseo
     }
-    return res.json() as Promise<T>;
-  } catch (error) {
-    throw error instanceof Error ? error : new Error('Error de red');
+    throw new Error(message);
   }
+
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
+  return response.json() as Promise<T>;
 }
 
 export const api = {
-  get: <T>(path: string) => request<T>(path),
-  post: <T>(path: string, body: unknown) =>
-    request<T>(path, { method: 'POST', body: JSON.stringify(body) }),
-  patch: <T>(path: string, body: unknown) =>
-    request<T>(path, { method: 'PATCH', body: JSON.stringify(body) }),
-  delete: (path: string) =>
-    request<void>(path, { method: 'DELETE' }),
+  get: <T>(path: string, options?: Omit<RequestOptions, 'method' | 'body'>) =>
+    request<T>(path, { ...options, method: 'GET' }),
+  post: <T>(path: string, body?: unknown, options?: Omit<RequestOptions, 'method' | 'body'>) =>
+    request<T>(path, { ...options, method: 'POST', body }),
+  patch: <T>(path: string, body?: unknown, options?: Omit<RequestOptions, 'method' | 'body'>) =>
+    request<T>(path, { ...options, method: 'PATCH', body }),
+  put: <T>(path: string, body?: unknown, options?: Omit<RequestOptions, 'method' | 'body'>) =>
+    request<T>(path, { ...options, method: 'PUT', body }),
+  delete: <T = void>(path: string, options?: Omit<RequestOptions, 'method' | 'body'>) =>
+    request<T>(path, { ...options, method: 'DELETE' }),
 };
