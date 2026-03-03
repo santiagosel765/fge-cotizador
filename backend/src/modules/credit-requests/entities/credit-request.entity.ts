@@ -26,7 +26,7 @@ export class CreditRequest {
   projectId!: string;
 
   @Column({ nullable: true })
-  userId!: string;
+  userId!: string | null;
 
   @Column({ unique: true })
   ticketNumber!: string;
@@ -41,7 +41,7 @@ export class CreditRequest {
   status!: CreditRequestStatus;
 
   @Column('text', { nullable: true })
-  notes!: string;
+  notes!: string | null;
 
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt!: Date;
@@ -55,5 +55,5 @@ export class CreditRequest {
 
   @ManyToOne(() => User, (user) => user.creditRequests, { nullable: true })
   @JoinColumn({ name: 'userId' })
-  user!: User;
+  user!: User | null;
 }

@@ -10,6 +10,7 @@ import { TechnicalPlansSection } from '@/components/planificador/TechnicalPlansS
 import { exportProjectPdf } from '@/lib/pdf/exportProjectPdf';
 import MapSection from './components/MapSection';
 import ChatTab from './components/ChatTab';
+import { CreditRequestModal } from '@/components/credit/CreditRequestModal';
 
 interface CartItem {
   materialId: string;
@@ -20,6 +21,14 @@ interface CartItem {
 }
 
 const IVA_RATE = 0.12;
+
+
+type CreditRequestSubmission = {
+  id: string;
+  ticketNumber: string;
+  status: string;
+  createdAt: string;
+};
 
 function ProjectPageContent() {
   const { id } = useParams<{ id: string }>();
@@ -53,6 +62,8 @@ function ProjectPageContent() {
   const [panoUrl, setPanoUrl] = useState<string>('');
   const autoGenerateCalledRef = useRef(false);
   const mapSectionRef = useRef<HTMLDivElement | null>(null);
+  const [isCreditModalOpen, setIsCreditModalOpen] = useState(false);
+  const [creditSubmission, setCreditSubmission] = useState<CreditRequestSubmission | null>(null);
 
   const [planner, setPlanner] = useState({
     projectType: '',
@@ -785,7 +796,21 @@ function ProjectPageContent() {
         <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-white p-6 rounded-xl shadow-lg flex flex-col items-center text-center">
             <h3 className="text-xl font-bold text-slate-800">¿Necesitas Financiamiento?</h3>
-            <button className="mt-4 w-full bg-green-600 text-white font-bold py-3 rounded-lg hover:bg-green-700">Solicitar Crédito</button>
+            {creditSubmission ? (
+              <div className="mt-4 w-full rounded-lg border border-green-200 bg-green-50 p-4 text-left">
+                <p className="text-sm font-semibold text-green-700">✅ Solicitud enviada</p>
+                <p className="mt-1 text-sm text-slate-700">
+                  Ticket: <span className="font-bold">{creditSubmission.ticketNumber}</span>
+                </p>
+              </div>
+            ) : (
+              <button
+                onClick={() => setIsCreditModalOpen(true)}
+                className="mt-4 w-full bg-green-600 text-white font-bold py-3 rounded-lg hover:bg-green-700"
+              >
+                Solicitar Crédito
+              </button>
+            )}
           </div>
           <div className="bg-white p-6 rounded-xl shadow-lg flex flex-col items-center text-center">
             <h3 className="text-xl font-bold text-slate-800">¿Todo Listo?</h3>
@@ -805,6 +830,15 @@ function ProjectPageContent() {
 
       </main>
 
+      <CreditRequestModal
+        isOpen={isCreditModalOpen}
+        projectId={project.id}
+        onClose={() => setIsCreditModalOpen(false)}
+        onSubmitted={(submission) => {
+          setCreditSubmission(submission);
+          setIsCreditModalOpen(false);
+        }}
+      />
       <ChatTab projectId={project.id} onGeneratePlan={handleGeneratePlan} />
     </div>
   );
