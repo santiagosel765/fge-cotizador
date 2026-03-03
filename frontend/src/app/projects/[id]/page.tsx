@@ -5,6 +5,7 @@ import { useParams, useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import type { MaterialCategory, Project } from '@/types/project';
 import { RenderViewer } from '@/components/visualizaciones/RenderViewer';
+import { VirtualTourViewer } from '@/components/visualizaciones/VirtualTourViewer';
 import MapSection from './components/MapSection';
 import ChatTab from './components/ChatTab';
 
@@ -572,35 +573,9 @@ function ProjectPageContent() {
               </button>
             )}
           </div>
-          {panoUrl ? (
-            <img src={panoUrl} alt="Tour virtual 360°" className="w-full rounded-lg" />
-          ) : (
-            <div className="flex flex-col items-center justify-center h-64 bg-gradient-to-b 
-                    from-blue-50 to-blue-100 rounded-lg border-2 border-dashed border-blue-200">
-              {panoLoading ? (
-                <>
-                  <div className="animate-spin rounded-full h-10 w-10 border-4 
-                          border-teal-500 border-t-transparent mb-3" />
-                  <p className="text-slate-600 text-sm font-medium">
-                    Generando tour virtual 360°...
-                  </p>
-                  <p className="text-slate-400 text-xs mt-1">Puede tardar 30-60 segundos</p>
-                </>
-              ) : (
-                <>
-                  <span className="text-5xl mb-3">🌐</span>
-                  <p className="text-slate-500 text-sm font-medium">
-                    {project.panoPrompt
-                      ? 'Haz clic en "Generar Tour 360°" para crear la visualización'
-                      : 'Genera el plan primero para activar el tour'}
-                  </p>
-                </>
-              )}
-            </div>
-          )}
-          {panoError && (
-            <p className="text-red-600 text-sm mt-2 bg-red-50 border border-red-200 
-                  rounded-lg px-3 py-2">⚠️ {panoError}</p>
+          <VirtualTourViewer imageUrl={panoUrl} isLoading={panoLoading} error={panoError} />
+          {!project.panoPrompt && !panoLoading && !panoUrl && (
+            <p className="text-slate-500 text-sm mt-2">Genera el plan primero para activar el tour.</p>
           )}
         </section>
 
