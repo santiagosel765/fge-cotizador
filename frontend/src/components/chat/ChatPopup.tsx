@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { api } from '@/lib/api';
 
 type MessageRole = 'user' | 'assistant';
@@ -88,9 +89,17 @@ export function ChatPopup({ projectId, isOpen, onClose, onNewAssistantMessage }:
       }`}
     >
       <header className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
-        <div>
-          <p className="text-sm font-semibold text-slate-900">Asistente FGE</p>
-          <p className="text-xs text-slate-500">Arquitectura y cotización</p>
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-100 text-xs font-semibold text-blue-700">
+            FGE
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-slate-900">Asistente FGE</p>
+            <p className="flex items-center gap-1.5 text-xs text-slate-500">
+              <span className="h-2 w-2 rounded-full bg-green-400 animate-pulse" />
+              Arquitectura y cotización
+            </p>
+          </div>
         </div>
         <button
           type="button"
@@ -102,17 +111,31 @@ export function ChatPopup({ projectId, isOpen, onClose, onNewAssistantMessage }:
         </button>
       </header>
 
-      <div className="flex-1 space-y-3 overflow-y-auto px-4 py-3 bg-slate-50">
+      <div className="flex-1 space-y-3 overflow-y-auto bg-gray-50 px-4 py-3">
         {messages.map((message, index) => (
           <div key={`${message.role}-${index}`} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div
-              className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm ${
+              className={`rounded-2xl p-3 text-sm ${
                 message.role === 'user'
-                  ? 'rounded-br-sm bg-slate-900 text-white'
-                  : 'rounded-bl-sm bg-white text-slate-700 border border-slate-200'
+                  ? 'ml-auto max-w-[75%] rounded-br-sm bg-blue-600 text-white'
+                  : 'max-w-[85%] rounded-bl-sm border border-gray-100 bg-white text-gray-800 shadow-sm leading-relaxed'
               }`}
             >
-              {message.content}
+              {message.role === 'assistant' ? (
+                <ReactMarkdown
+                  components={{
+                    p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                    strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                    ul: ({ children }) => <ul className="list-disc list-inside mt-1 mb-2 space-y-1">{children}</ul>,
+                    ol: ({ children }) => <ol className="list-decimal list-inside mt-1 mb-2 space-y-1">{children}</ol>,
+                    li: ({ children }) => <li className="text-sm">{children}</li>,
+                  }}
+                >
+                  {message.content}
+                </ReactMarkdown>
+              ) : (
+                message.content
+              )}
             </div>
           </div>
         ))}
@@ -128,7 +151,7 @@ export function ChatPopup({ projectId, isOpen, onClose, onNewAssistantMessage }:
         <div ref={endRef} />
       </div>
 
-      <footer className="border-t border-slate-200 p-3">
+      <footer className="border-t border-gray-200 bg-white p-3">
         {!projectId && (
           <p className="mb-2 text-xs text-amber-700">Selecciona un proyecto para usar el asistente</p>
         )}
@@ -143,7 +166,7 @@ export function ChatPopup({ projectId, isOpen, onClose, onNewAssistantMessage }:
               }
             }}
             placeholder="Escribe tu mensaje..."
-            className="h-10 flex-1 rounded-xl border border-slate-300 px-3 text-sm text-slate-800 focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
+            className="h-10 flex-1 rounded-xl border border-slate-300 px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <button
             type="button"
