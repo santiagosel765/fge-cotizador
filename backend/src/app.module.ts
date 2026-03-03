@@ -10,6 +10,7 @@ import { AiModule } from './modules/ai/ai.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { CreditRequestsModule } from './modules/credit-requests/credit-requests.module';
 import { MaterialsModule } from './modules/materials/materials.module';
+import { IpMcModule } from './modules/ipmc/ipmc.module';
 import { ProjectsModule } from './modules/projects/projects.module';
 import { QuotationsModule } from './modules/quotations/quotations.module';
 import { UsersModule } from './modules/users/users.module';
@@ -64,6 +65,7 @@ import { UsersModule } from './modules/users/users.module';
     UsersModule,
     ProjectsModule,
     MaterialsModule,
+    IpMcModule,
     QuotationsModule,
     AiModule,
     CreditRequestsModule,
