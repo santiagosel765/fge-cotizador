@@ -4,6 +4,7 @@ import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import type { MaterialCategory, Project } from '@/types/project';
+import { RenderViewer } from '@/components/visualizaciones/RenderViewer';
 import MapSection from './components/MapSection';
 import ChatTab from './components/ChatTab';
 
@@ -42,8 +43,10 @@ function ProjectPageContent() {
   const [quotationError, setQuotationError] = useState('');
   const [renderLoading, setRenderLoading] = useState(false);
   const [renderError, setRenderError] = useState('');
+  const [renderUrl, setRenderUrl] = useState<string>('');
   const [panoLoading, setPanoLoading] = useState(false);
   const [panoError, setPanoError] = useState('');
+  const [panoUrl, setPanoUrl] = useState<string>('');
   const autoGenerateCalledRef = useRef(false);
 
   const [planner, setPlanner] = useState({
@@ -220,7 +223,8 @@ function ProjectPageContent() {
     setRenderLoading(true);
     setRenderError('');
     try {
-      await api.post(`/ai/render/${project.id}`, {});
+      const result = await api.post<{ imageUrl: string }>(`/ai/render/${project.id}`, {});
+      setRenderUrl(result.imageUrl);
       const updated = await api.get<Project>(`/projects/${project.id}`);
       setProject(updated);
     } catch (err) {
@@ -235,7 +239,8 @@ function ProjectPageContent() {
     setPanoLoading(true);
     setPanoError('');
     try {
-      await api.post(`/ai/panorama/${project.id}`, {});
+      const result = await api.post<{ imageUrl: string }>(`/ai/panorama/${project.id}`, {});
+      setPanoUrl(result.imageUrl);
       const updated = await api.get<Project>(`/projects/${project.id}`);
       setProject(updated);
     } catch (err) {
@@ -244,6 +249,15 @@ function ProjectPageContent() {
       setPanoLoading(false);
     }
   }
+
+  useEffect(() => {
+    if (project?.aiAssets) {
+      const render = project.aiAssets.find((asset) => asset.assetType === 'render');
+      const pano = project.aiAssets.find((asset) => asset.assetType === 'panorama');
+      if (render?.storageUrl) setRenderUrl(render.storageUrl);
+      if (pano?.storageUrl) setPanoUrl(pano.storageUrl);
+    }
+  }, [project]);
 
   useEffect(() => {
     if (
@@ -311,9 +325,6 @@ function ProjectPageContent() {
   if (loading || !project) {
     return <div className="min-h-screen flex items-center justify-center text-slate-500">Cargando proyecto...</div>;
   }
-
-  const render = project.aiAssets?.find(a => a.assetType === 'render')?.storageUrl;
-  const pano = project.aiAssets?.find(a => a.assetType === 'panorama')?.storageUrl;
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800">
@@ -530,7 +541,7 @@ function ProjectPageContent() {
         <section className="bg-white p-6 rounded-xl shadow-lg">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-2xl font-bold">🖼️ Render Fotorrealista</h2>
-            {!render && project.renderPrompt && (
+            {!renderUrl && project.renderPrompt && (
               <button
                 onClick={handleGenerateRender}
                 disabled={renderLoading}
@@ -541,42 +552,16 @@ function ProjectPageContent() {
               </button>
             )}
           </div>
-          {render ? (
-            <img src={render} alt="Render fotorrealista" className="w-full rounded-lg" />
-          ) : (
-            <div className="flex flex-col items-center justify-center h-64 bg-gradient-to-b 
-                    from-slate-100 to-slate-200 rounded-lg border-2 border-dashed border-slate-300">
-              {renderLoading ? (
-                <>
-                  <div className="animate-spin rounded-full h-10 w-10 border-4 
-                          border-purple-500 border-t-transparent mb-3" />
-                  <p className="text-slate-600 text-sm font-medium">
-                    Generando render fotorrealista...
-                  </p>
-                  <p className="text-slate-400 text-xs mt-1">Puede tardar 30-60 segundos</p>
-                </>
-              ) : (
-                <>
-                  <span className="text-5xl mb-3">🖼️</span>
-                  <p className="text-slate-500 text-sm font-medium">
-                    {project.renderPrompt
-                      ? 'Haz clic en "Generar Render" para crear la imagen'
-                      : 'Genera el plan primero para activar el render'}
-                  </p>
-                </>
-              )}
-            </div>
-          )}
-          {renderError && (
-            <p className="text-red-600 text-sm mt-2 bg-red-50 border border-red-200 
-                  rounded-lg px-3 py-2">⚠️ {renderError}</p>
+          <RenderViewer imageUrl={renderUrl} isLoading={renderLoading} error={renderError} />
+          {!project.renderPrompt && !renderLoading && !renderUrl && (
+            <p className="text-slate-500 text-sm mt-2">Genera el plan primero para activar el render.</p>
           )}
         </section>
 
         <section className="bg-white p-6 rounded-xl shadow-lg">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-2xl font-bold">🌐 Tour Virtual 360°</h2>
-            {!pano && project.panoPrompt && (
+            {!panoUrl && project.panoPrompt && (
               <button
                 onClick={handleGeneratePanorama}
                 disabled={panoLoading}
@@ -587,8 +572,8 @@ function ProjectPageContent() {
               </button>
             )}
           </div>
-          {pano ? (
-            <img src={pano} alt="Tour virtual 360°" className="w-full rounded-lg" />
+          {panoUrl ? (
+            <img src={panoUrl} alt="Tour virtual 360°" className="w-full rounded-lg" />
           ) : (
             <div className="flex flex-col items-center justify-center h-64 bg-gradient-to-b 
                     from-blue-50 to-blue-100 rounded-lg border-2 border-dashed border-blue-200">
