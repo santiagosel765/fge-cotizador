@@ -6,6 +6,12 @@ export interface Project {
   name: string;
   userDescription: string;
   detailedConcept?: string;
+  planoAcotadoSvg?: string;
+  planoElectricoSvg?: string;
+  planoFuerzaSvg?: string;
+  planoHidraulicoSvg?: string;
+  planoDrenajesSvg?: string;
+  planoCimentacionesSvg?: string;
   blueprintPrompt?: string;
   renderPrompt?: string;
   panoPrompt?: string;
