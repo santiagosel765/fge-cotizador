@@ -12,6 +12,17 @@ import { GeneratePlanDto } from './dto/generate-plan.dto';
 import { AiConversation } from './entities/ai-conversation.entity';
 import { AiAssetStatus, AiAssetType, AiGeneratedAsset } from './entities/ai-generated-asset.entity';
 
+type TechnicalPlanType =
+  'acotado' | 'electrico' | 'fuerza' | 'hidraulico' | 'drenajes' | 'cimentaciones';
+
+type TechnicalPlanField =
+  'planoAcotadoSvg'
+  | 'planoElectricoSvg'
+  | 'planoFuerzaSvg'
+  | 'planoHidraulicoSvg'
+  | 'planoDrenajesSvg'
+  | 'planoCimentacionesSvg';
+
 type PlanResponse = {
   detailedConcept: string;
   blueprintSvg: string;
@@ -299,6 +310,155 @@ INSTRUCCIONES PARA suggestedMaterials:
       blueprintSvg: parsed.blueprintSvg,
       suggestedMaterials: parsed.suggestedMaterials ?? [],
     };
+  }
+
+
+  async generateTechnicalPlan(
+    projectId: string,
+    planType: TechnicalPlanType,
+  ): Promise<{ svgContent: string }> {
+    const project = await this.projectsService.findOne(projectId);
+    if (!project) throw new NotFoundException('Proyecto no encontrado');
+
+    if (!project.detailedConcept && !project.blueprintPrompt) {
+      throw new Error('Genera el plan arquitectónico primero.');
+    }
+
+    const planModel = this.configService.get<string>('GEMINI_MODEL_PLAN') ?? 'gemini-1.5-flash';
+    const model = this.genAI.getGenerativeModel({ model: planModel });
+
+    const baseContext = `
+PROYECTO: ${project.name}
+DESCRIPCIÓN: ${project.userDescription}
+CONCEPTO: ${project.detailedConcept ?? ''}
+REFERENCIA DEL PLANO BASE: ${project.blueprintPrompt ?? ''}
+`;
+
+    const prompts: Record<TechnicalPlanType, string> = {
+      acotado: `${baseContext}
+Genera el plano ACOTADO de esta vivienda como SVG técnico 2D.
+El plano acotado es idéntico al arquitectónico pero con todas las cotas (medidas) añadidas.
+Usa el mismo sistema de grilla: ViewBox "0 0 800 600", área dibujable x=80,y=80,w=640,h=440.
+AGREGA líneas de cota (líneas finas con flechas en los extremos) fuera de cada ambiente:
+- Cotas horizontales: encima del plano (y=50) y debajo (y=540)
+- Cotas verticales: a la izquierda (x=40) y derecha (x=760)  
+- Cada cota muestra la medida real en metros (ej: "4.8 m")
+- Líneas de cota: stroke="#0066cc" stroke-width="1" con flechas
+Dibuja los ambientes IGUAL que el arquitectónico base.
+Responde SOLO con el SVG, sin markdown, sin explicaciones.`,
+
+      electrico: `${baseContext}
+Genera el plano de INSTALACIONES ELÉCTRICAS como SVG técnico 2D.
+Usa ViewBox "0 0 800 600", área dibujable x=80,y=80,w=640,h=440.
+Dibuja la distribución de ambientes con paredes (igual al arquitectónico).
+AGREGA sobre el plano la simbología eléctrica estándar:
+- Lámparas: círculo con X adentro (⊗), color #FFB300
+- Tomacorrientes: línea con dos líneas paralelas, color #0066CC  
+- Interruptores: línea con ángulo, color #0066CC
+- Tablero general: rectángulo con "T.G." en color #CC0000
+- Líneas de circuito: líneas punteadas color #0066CC entre elementos
+Cada ambiente debe tener iluminación y al menos 1 tomacorriente.
+Responde SOLO con el SVG, sin markdown, sin explicaciones.`,
+
+      fuerza: `${baseContext}
+Genera el plano de FUERZA (circuitos 220V) como SVG técnico 2D.
+Usa ViewBox "0 0 800 600", área dibujable x=80,y=80,w=640,h=440.
+Dibuja la distribución de ambientes con paredes.
+AGREGA circuitos de fuerza (220V):
+- Tomacorrientes 220V: símbolo especial con "220V", color #CC0000
+- Cocina: circuito dedicado para estufa y refrigeradora
+- Lavandería: circuito para lavadora  
+- A/C (si aplica): circuito dedicado
+- Tablero de fuerza: rectángulo "T.F." en color #CC0000
+- Líneas de circuito 220V: líneas dobles color #CC0000
+Responde SOLO con el SVG, sin markdown, sin explicaciones.`,
+
+      hidraulico: `${baseContext}
+Genera el plano de INSTALACIONES HIDRÁULICAS como SVG técnico 2D.
+Usa ViewBox "0 0 800 600", área dibujable x=80,y=80,w=640,h=440.
+Dibuja la distribución de ambientes con paredes.
+AGREGA la red de agua potable:
+- Medidor de agua: símbolo en el límite de la propiedad (borde del plano)
+- Tubería principal: línea azul continua (#0066CC, stroke-width="2")
+- Bajadas a cada punto de consumo: líneas azules más delgadas
+- Puntos de consumo: círculos azules pequeños en baño, cocina, pila
+- Diámetros de tubería: etiquetas "1/2"" o "3/4"" sobre las líneas
+- Llave de paso principal: símbolo de válvula al inicio
+Responde SOLO con el SVG, sin markdown, sin explicaciones.`,
+
+      drenajes: `${baseContext}
+Genera el plano de DRENAJES como SVG técnico 2D.
+Usa ViewBox "0 0 800 600", área dibujable x=80,y=80,w=640,h=440.
+Dibuja la distribución de ambientes con paredes.
+AGREGA la red de drenaje:
+- Drenaje sanitario: líneas café/naranja (#8B4513, stroke-width="2", stroke-dasharray="8,4")
+- Drenaje pluvial: líneas verdes (#006600, stroke-width="2", stroke-dasharray="4,4")
+- Puntos de drenaje: inodoro, lavamanos, ducha, pila, piso
+- Cajas de registro: cuadrados pequeños "C.R." color #8B4513
+- Fosa séptica o conexión municipal: en el borde del plano
+- Indicar pendiente con flechas en la dirección del flujo
+Responde SOLO con el SVG, sin markdown, sin explicaciones.`,
+
+      cimentaciones: `${baseContext}
+Genera el plano de CIMENTACIONES como SVG técnico 2D.
+Usa ViewBox "0 0 800 600", área dibujable x=80,y=80,w=640,h=440.
+Dibuja el plano de cimentaciones según norma AGIES Guatemala:
+- Zapatas aisladas: cuadrados con líneas diagonales (#8B4513), tamaño 0.8x0.8m típico
+- Zapatas corridas: rectángulos largos bajo muros perimetrales
+- Vigas de amarre: líneas gruesas (#CC6600, stroke-width="4") conectando zapatas
+- Columnas: cuadrados pequeños sólidos (#333) en intersecciones de muros
+- Profundidad de desplante: anotar "Prof: 0.80m" en nota inferior
+- Dimensiones de zapatas: anotar "0.80x0.80x0.25m" sobre cada zapata
+- Hierro de refuerzo: anotar "4 hierros 3/8" + estribos 1/4"" en nota
+Responde SOLO con el SVG, sin markdown, sin explicaciones.`,
+    };
+
+    const prompt = prompts[planType];
+    let text = '';
+    try {
+      const result = await model.generateContent(prompt);
+      text = result.response.text();
+    } catch (error) {
+      this.logger.error(`Error generando plano ${planType}: ${String(error)}`);
+      throw new Error(`No se pudo generar el plano de ${planType}.`);
+    }
+
+    let svgContent = '';
+
+    if (text.trim().startsWith('<svg')) {
+      svgContent = text.trim();
+    } else {
+      const svgMatch = text.match(/<svg[\s\S]*?<\/svg>/i);
+      if (svgMatch) {
+        svgContent = svgMatch[0];
+      }
+    }
+
+    if (!svgContent) {
+      try {
+        const parsed = this.parseGeminiJson(text);
+        svgContent = parsed.svgContent ?? parsed.blueprintSvg ?? parsed.svg ?? '';
+      } catch {
+        // ignorar
+      }
+    }
+
+    if (!svgContent) {
+      throw new Error(`Gemini no generó SVG válido para el plano ${planType}.`);
+    }
+
+    const fieldMap: Record<TechnicalPlanType, TechnicalPlanField> = {
+      acotado: 'planoAcotadoSvg',
+      electrico: 'planoElectricoSvg',
+      fuerza: 'planoFuerzaSvg',
+      hidraulico: 'planoHidraulicoSvg',
+      drenajes: 'planoDrenajesSvg',
+      cimentaciones: 'planoCimentacionesSvg',
+    };
+
+    await this.projectsService.saveTechnicalPlan(projectId, fieldMap[planType], svgContent);
+
+    return { svgContent };
   }
 
   async generateRender(projectId: string): Promise<{ imageUrl: string }> {

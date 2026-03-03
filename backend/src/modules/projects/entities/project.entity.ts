@@ -48,6 +48,24 @@ export class Project {
   @Column('text', { nullable: true })
   panoPrompt!: string;
 
+  @Column('text', { nullable: true })
+  planoAcotadoSvg!: string;
+
+  @Column('text', { nullable: true })
+  planoElectricoSvg!: string;
+
+  @Column('text', { nullable: true })
+  planoFuerzaSvg!: string;
+
+  @Column('text', { nullable: true })
+  planoHidraulicoSvg!: string;
+
+  @Column('text', { nullable: true })
+  planoDrenajesSvg!: string;
+
+  @Column('text', { nullable: true })
+  planoCimentacionesSvg!: string;
+
   @Column({ type: 'enum', enum: ProjectStatus, default: ProjectStatus.DRAFT })
   status!: ProjectStatus;
 
