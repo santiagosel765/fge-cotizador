@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { GoogleGenAI } from '@google/genai';
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
@@ -86,7 +87,7 @@ export class AiService {
     this.genAINew = new GoogleGenAI({ apiKey });
   }
 
-  async chat(dto: ChatMessageDto): Promise<{ reply: string }> {
+  async chat(dto: ChatMessageDto): Promise<{ response: string; conversationId: string }> {
     const project = await this.projectsService.findOne(dto.projectId);
     if (!project) throw new NotFoundException('Proyecto no encontrado');
 
@@ -122,22 +123,41 @@ Cuando el usuario haya definido bien su proyecto, sugiere usar el botón "Genera
       throw new Error('No se pudo obtener respuesta de IA. Intenta nuevamente.');
     }
 
+    let conversationId = dto.conversationId;
     try {
-      let conversation = await this.conversationsRepo.findOne({
-        where: { projectId: dto.projectId },
-      });
+      let conversation = dto.conversationId
+        ? await this.conversationsRepo.findOne({
+          where: { id: dto.conversationId, projectId: dto.projectId },
+        })
+        : null;
+
+      if (!conversation) {
+        conversation = await this.conversationsRepo.findOne({
+          where: { projectId: dto.projectId },
+        });
+      }
+
       if (!conversation) {
         conversation = this.conversationsRepo.create({
           projectId: dto.projectId,
           userId: this.ANONYMOUS_USER_ID,
         });
-        await this.conversationsRepo.save(conversation);
+      }
+
+      conversation = await this.conversationsRepo.save(conversation);
+      conversationId = conversation.id;
+      if (!conversationId) {
+        throw new Error('No se generó conversationId para la conversación');
       }
     } catch (error) {
       this.logger.warn(`No se pudo guardar conversación: ${String(error)}`);
+
+      if (!conversationId) {
+        conversationId = dto.conversationId ?? randomUUID();
+      }
     }
 
-    return { reply };
+    return { response: reply, conversationId };
   }
 
   async generatePlan(dto: GeneratePlanDto): Promise<{
