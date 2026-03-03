@@ -27,6 +27,50 @@ export class AiService {
   private readonly genAINew: GoogleGenAI;
   private readonly ANONYMOUS_USER_ID = '00000000-0000-0000-0000-000000000000';
 
+  private parseGeminiJson(rawText: string): any {
+    const attempts: string[] = [];
+
+    const tryParse = (candidate: string, label: string): any | null => {
+      try {
+        return JSON.parse(candidate);
+      } catch {
+        attempts.push(label);
+        return null;
+      }
+    };
+
+    const direct = tryParse(rawText, 'json directo');
+    if (direct) return direct;
+
+    const markdownMatch = rawText.match(/```json\s*([\s\S]*?)```/i)
+      ?? rawText.match(/```\s*([\s\S]*?)```/);
+    if (markdownMatch?.[1]) {
+      const markdownParsed = tryParse(markdownMatch[1].trim(), 'bloque markdown');
+      if (markdownParsed) return markdownParsed;
+    }
+
+    const start = rawText.indexOf('{');
+    const end = rawText.lastIndexOf('}');
+    if (start !== -1 && end !== -1 && end > start) {
+      const slicedParsed = tryParse(rawText.slice(start, end + 1), 'desde primera llave a última llave');
+      if (slicedParsed) return slicedParsed;
+    } else {
+      attempts.push('desde primera llave a última llave');
+    }
+
+    const repairedText = rawText
+      .replace(/[“”]/g, '"')
+      .replace(/[‘’]/g, "'")
+      .replace(/,\s*([}\]])/g, '$1');
+    const repaired = tryParse(repairedText, 'reparación básica');
+    if (repaired) return repaired;
+
+    const debugSnippet = rawText.slice(0, 200).replace(/\s+/g, ' ').trim();
+    throw new Error(
+      `No se pudo parsear JSON de Gemini tras intentos (${attempts.join(', ')}). Fragmento: ${debugSnippet}`,
+    );
+  }
+
   constructor(
     @InjectRepository(AiGeneratedAsset)
     private readonly assetsRepo: Repository<AiGeneratedAsset>,
@@ -138,82 +182,36 @@ Genera una respuesta JSON con esta estructura exacta (sin markdown, solo JSON pu
   ]
 }
 
-INSTRUCCIONES PARA blueprintSvg:
-- "blueprintSvg": Un SVG técnico 2D de planta arquitectónica completo y
-autocontenido. DEBES seguir estas reglas sin excepción:
+INSTRUCCIONES PARA blueprintSvg — SISTEMA DE GRILLA FIJA:
 
-PASO 1 — ANALIZA EL PROYECTO:
-Lee la descripción del proyecto y extrae:
-- Tipo de proyecto (vivienda, local comercial, bodega, ampliación, etc.)
-- Dimensiones totales si se especifican, o estímalas según el tipo y espacios
-- Lista de ambientes requeridos y sus áreas aproximadas
-- Materiales y condicionantes mencionados
+Usa SIEMPRE estas dimensiones fijas sin importar el tamaño del proyecto:
+- ViewBox: "0 0 800 600"
+- Área dibujable: x=80, y=80, width=640, height=440
+- Escala: 1 celda = 80px = aproximadamente 3 metros
 
-PASO 2 — CALCULA EL VIEWBOX Y ESCALA:
-- Determina las dimensiones reales del proyecto en metros (ancho x largo)
-- Usa escala: 1 metro = 55 píxeles
-- Margen para cotas: 80px en cada lado
-- viewBox width = (ancho_metros * 55) + 160
-- viewBox height = (largo_metros * 55) + 160
-- TODOS los elementos del plano deben caber dentro de este viewBox
-- Si no conoces las dimensiones exactas, estímalas razonablemente según
-  el tipo de proyecto y los ambientes solicitados
+GRILLA DE POSICIONAMIENTO (columnas x filas de 80px):
+Col 0=80, Col 1=160, Col 2=240, Col 3=320, Col 4=400, Col 5=480, Col 6=560, Col 7=640
+Fila 0=80, Fila 1=160, Fila 2=240, Fila 3=320, Fila 4=400, Fila 5=480
 
-PASO 3 — APLICA PRINCIPIOS DE ARQUITECTURA SEGÚN EL TIPO DE PROYECTO:
+REGLAS DE DIBUJO:
+1. Cada ambiente ocupa celdas completas (múltiplos de 80px)
+2. NUNCA dos ambientes pueden compartir el mismo espacio en la grilla
+3. Todos los ambientes deben estar DENTRO del área dibujable (x:80-720, y:80-520)
+4. Las paredes se dibujan con <rect> stroke="#333" strokeWidth="3" fill="none"
+5. El texto del ambiente va centrado con <text> fontSize="11"
+6. Las puertas son arcos <path> de 40px de radio
+7. Las ventanas son líneas dobles en el muro
 
-Para VIVIENDA (cualquier tamaño):
-- Zona social (sala, comedor, cocina) con acceso directo desde entrada y luz natural
-- Zona privada (dormitorios) separada de zona social, preferiblemente al fondo
-- Baño accesible desde pasillo o vestíbulo, NUNCA abriendo directamente a cocina
-- Pasillo de distribución de mínimo 90cm de ancho conectando todos los ambientes
-- Cocina con ventilación al exterior (ventana)
-- Cada dormitorio con ventana al exterior
-- Puerta principal en fachada frontal
+ESTRUCTURA DEL PLANO:
+Calcula la distribución ANTES de escribir el SVG:
+- Lista todos los ambientes con su tamaño en celdas (ej: sala 2x2, cocina 1x2)
+- Verifica que la suma total de celdas no exceda el área disponible (8x6=48 celdas)
+- Asigna posición (col, fila) a cada ambiente sin solapamiento
 
-Para LOCAL COMERCIAL / NEGOCIO:
-- Área de atención al cliente amplia al frente con vitrina o acceso directo
-- Área de bodega o almacén al fondo
-- Servicios sanitarios al fondo con acceso desde área de trabajo
-- Acceso de mercancía diferenciado del acceso de clientes si el espacio lo permite
-
-Para BODEGA / DEPÓSITO:
-- Área de carga/descarga con acceso vehicular amplio
-- Espacio abierto sin divisiones internas innecesarias
-- Área administrativa pequeña si se solicitó
-- Baño de servicio en esquina
-
-Para AMPLIACIÓN / ANEXO:
-- Conectar con la estructura existente en el punto lógico
-- Respetar la circulación existente
-- Los nuevos ambientes deben ser funcionales por sí solos
-
-Para CUALQUIER TIPO:
-- La distribución debe ser LÓGICA y FUNCIONAL
-- No dejar ambientes sin acceso
-- No cruzar un ambiente para llegar a otro si se puede evitar
-- Las puertas deben tener espacio de batiente libre
-
-PASO 4 — GENERA EL SVG CON ESTOS ELEMENTOS:
-
-Paredes exteriores: rect con fill:#2d2d2d, calculado según dimensiones reales
-Paredes interiores: rect o line con stroke:#2d2d2d stroke-width:8
-Habitaciones/ambientes: rect con fill:#f0f0f0 para zonas sociales,
-  fill:#e8f0e8 para dormitorios, fill:#e8e8f5 para baños,
-  fill:#f5f0e8 para zonas de servicio/cocina
-Ventanas: rect pequeño con fill:#b3d9f7 stroke:#2d2d2d en el espesor de la pared
-Puertas: path de arco (quarter circle) + line de batiente, fill:none stroke:#555
-Etiquetas: text centrado en cada ambiente con nombre y área en m², font sans-serif
-Cotas exteriores: líneas fuera del plano con texto de dimensión en metros
-  (usa markers de flecha o líneas cortas perpendiculares como ticks)
-Título: texto en la parte inferior "PLANTA ARQUITECTÓNICA" y tipo de proyecto
-
-PASO 5 — VERIFICACIÓN ANTES DE GENERAR:
-- ¿Todos los ambientes caben en el viewBox calculado? Si no, aumenta el viewBox
-- ¿Cada ambiente tiene al menos una puerta de acceso?
-- ¿El baño/servicio sanitario tiene acceso desde pasillo?
-- ¿Las etiquetas de texto están dentro de su habitación?
-- ¿Las cotas están fuera de los muros exteriores?
-- ¿El SVG es completamente autocontenido (sin imports externos)?
+EJEMPLO DE AMBIENTE CORRECTO:
+<rect x="80" y="80" width="160" height="160" stroke="#333" stroke-width="3" fill="#f5f5f0"/>
+<text x="160" y="165" text-anchor="middle" font-size="11" fill="#333">SALA</text>
+<text x="160" y="178" text-anchor="middle" font-size="9" fill="#666">4.8 x 4.8 m</text>
 
 IMPORTANTE: Responde con SVG válido, sin markdown, sin backticks, sin explicaciones.
 El SVG debe ser el valor completo del campo blueprintSvg en el JSON.
@@ -235,10 +233,10 @@ INSTRUCCIONES PARA suggestedMaterials:
 
     let parsed: PlanResponse;
     try {
-      const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-      parsed = JSON.parse(cleaned) as PlanResponse;
-    } catch {
+      parsed = this.parseGeminiJson(text) as PlanResponse;
+    } catch (error) {
       this.logger.error(`Error parseando respuesta de Gemini: ${text.substring(0, 500)}`);
+      this.logger.error(`Detalle parseo Gemini: ${String(error)}`);
       throw new Error('La IA no devolvió un formato válido. Intenta de nuevo.');
     }
 
@@ -258,7 +256,7 @@ INSTRUCCIONES PARA suggestedMaterials:
           existing.storageUrl = parsed.blueprintSvg;
           existing.status = AiAssetStatus.READY;
           existing.prompt = parsed.blueprintPrompt ?? existing.prompt;
-          existing.modelUsed = 'gemini-1.5-flash';
+          existing.modelUsed = planModel;
           await this.assetsRepo.save(existing);
         } else {
           const asset = this.assetsRepo.create({
@@ -267,7 +265,7 @@ INSTRUCCIONES PARA suggestedMaterials:
             storageUrl: parsed.blueprintSvg,
             status: AiAssetStatus.READY,
             prompt: parsed.blueprintPrompt ?? 'Blueprint generado por IA',
-            modelUsed: 'gemini-1.5-flash',
+            modelUsed: planModel,
           });
           await this.assetsRepo.save(asset);
         }
