@@ -1,5 +1,6 @@
-import { apiClient } from './api.client';
+import { api } from '@/lib/api';
 
 export const materialsService = {
-  list: async () => apiClient.get('/api/materials'),
+  list: async () => api.get('/materials'),
+  listCategories: async () => api.get('/materials/categories'),
 };

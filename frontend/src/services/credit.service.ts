@@ -1,6 +1,6 @@
-import { apiClient } from './api.client';
+import { api } from '@/lib/api';
 
 export const creditService = {
-  create: async (payload: unknown) => apiClient.post('/api/credit-requests', payload),
-  list: async () => apiClient.get('/api/credit-requests'),
+  create: async (payload: unknown) => api.post('/credit-requests', payload),
+  list: async () => api.get('/credit-requests'),
 };

@@ -1,8 +1,8 @@
-import { apiClient } from './api.client';
+import { api } from '@/lib/api';
 
 export const aiService = {
-  generatePlan: async (projectId: string) => apiClient.post(`/api/projects/${projectId}/plan`),
-  listAssets: async (projectId: string) => apiClient.get(`/api/projects/${projectId}/assets`),
-  sendMessage: async (projectId: string, payload: unknown) =>
-    apiClient.post(`/api/projects/${projectId}/chat`, payload),
+  chat: async (payload: unknown) => api.post('/ai/chat', payload),
+  generatePlan: async (payload: unknown) => api.post('/ai/plan', payload),
+  generateRender: async (projectId: string) => api.post(`/ai/render/${projectId}`),
+  generatePanorama: async (projectId: string) => api.post(`/ai/panorama/${projectId}`),
 };

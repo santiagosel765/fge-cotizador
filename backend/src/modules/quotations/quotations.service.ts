@@ -4,8 +4,14 @@ import { Repository } from 'typeorm';
 import { CreateQuotationDto } from './dto/create-quotation.dto';
 import { Quotation, QuotationStatus } from './entities/quotation.entity';
 import { QuotationItem } from './entities/quotation-item.entity';
+import { QuotationResponseDto } from './dto/quotation-response.dto';
 
 const IVA_RATE = 0.12;
+const IVA_DIVISOR = 1 + IVA_RATE;
+
+function round2(value: number): number {
+  return Number(value.toFixed(2));
+}
 
 @Injectable()
 export class QuotationsService {
@@ -16,25 +22,33 @@ export class QuotationsService {
     private readonly itemsRepo: Repository<QuotationItem>,
   ) {}
 
-  async create(dto: CreateQuotationDto): Promise<Quotation> {
+  private withIvaIncluido(quotation: Quotation): QuotationResponseDto {
+    return {
+      ...quotation,
+      ivaIncluido: true,
+    };
+  }
+
+  async create(dto: CreateQuotationDto): Promise<QuotationResponseDto> {
     const count = await this.quotationsRepo.count({
       where: { projectId: dto.projectId },
     });
 
     const items = dto.items.map((item) => {
-      const subtotalGtq = Number((item.quantity * item.unitPriceGtq).toFixed(2));
+      const unitPriceWithIva = round2(item.unitPriceGtq * IVA_DIVISOR);
+      const subtotalGtq = round2(item.quantity * unitPriceWithIva);
       return this.itemsRepo.create({
         materialId: item.materialId,
         quantity: item.quantity,
-        unitPriceGtq: item.unitPriceGtq,
+        unitPriceGtq: unitPriceWithIva,
         subtotalGtq,
         note: item.note,
       });
     });
 
-    const subtotalGtq = Number(items.reduce((sum, item) => sum + Number(item.subtotalGtq), 0).toFixed(2));
-    const ivaGtq = Number((subtotalGtq * IVA_RATE).toFixed(2));
-    const totalGtq = Number((subtotalGtq + ivaGtq).toFixed(2));
+    const subtotalGtq = round2(items.reduce((sum, item) => sum + Number(item.subtotalGtq), 0));
+    const ivaGtq = round2((subtotalGtq * IVA_RATE) / IVA_DIVISOR);
+    const totalGtq = subtotalGtq;
 
     const quotation = this.quotationsRepo.create({
       projectId: dto.projectId,
@@ -46,23 +60,26 @@ export class QuotationsService {
       items,
     });
 
-    return this.quotationsRepo.save(quotation);
+    const savedQuotation = await this.quotationsRepo.save(quotation);
+    return this.withIvaIncluido(savedQuotation);
   }
 
-  async findByProject(projectId: string): Promise<Quotation[]> {
-    return this.quotationsRepo.find({
+  async findByProject(projectId: string): Promise<QuotationResponseDto[]> {
+    const quotations = await this.quotationsRepo.find({
       where: { projectId },
       relations: ['items', 'items.material'],
       order: { versionNumber: 'DESC' },
     });
+
+    return quotations.map((quotation) => this.withIvaIncluido(quotation));
   }
 
-  async findOne(id: string): Promise<Quotation> {
+  async findOne(id: string): Promise<QuotationResponseDto> {
     const quotation = await this.quotationsRepo.findOne({
       where: { id },
       relations: ['items', 'items.material'],
     });
     if (!quotation) throw new NotFoundException(`Cotización ${id} no encontrada`);
-    return quotation;
+    return this.withIvaIncluido(quotation);
   }
 }

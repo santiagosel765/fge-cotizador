@@ -1,6 +1,6 @@
-import { apiClient } from './api.client';
+import { api } from '@/lib/api';
 
 export const quotationsService = {
-  listByProject: async (projectId: string) => apiClient.get(`/api/quotations?projectId=${projectId}`),
-  create: async (payload: unknown) => apiClient.post('/api/quotations', payload),
+  listByProject: async (projectId: string) => api.get(`/quotations?projectId=${projectId}`),
+  create: async (payload: unknown) => api.post('/quotations', payload),
 };

@@ -111,8 +111,8 @@ function ProjectPageContent() {
   const allMaterials = useMemo(() => categories.flatMap(category => category.materials ?? []), [categories]);
 
   const subtotal = useMemo(() => cart.reduce((acc, item) => acc + Number(item.unitPriceGtq) * item.quantity, 0), [cart]);
-  const iva = subtotal * IVA_RATE;
-  const total = subtotal + iva;
+  const iva = (subtotal * IVA_RATE) / (1 + IVA_RATE);
+  const total = subtotal;
 
   async function handleGeneratePlan() {
     if (!project) return;
@@ -652,7 +652,10 @@ function ProjectPageContent() {
                   {cart.map(item => (
                     <tr key={item.materialId} className="bg-white border-b hover:bg-slate-50">
                       <td className="px-6 py-4 font-medium text-slate-900">{item.name}<br /><span className="text-xs text-slate-500">{item.unit}</span></td>
-                      <td className="px-6 py-4 text-right">Q{Number(item.unitPriceGtq).toFixed(2)}</td>
+                      <td className="px-6 py-4 text-right">
+                        Q{Number(item.unitPriceGtq).toFixed(2)}
+                        <div className="text-[11px] text-slate-400">IVA incluido</div>
+                      </td>
                       <td className="px-6 py-4 text-center">{item.quantity}</td>
                       <td className="px-6 py-4 text-right font-semibold">Q{(Number(item.unitPriceGtq) * item.quantity).toFixed(2)}</td>
                       <td className="px-6 py-4 text-center">
@@ -687,10 +690,10 @@ function ProjectPageContent() {
           <div className="bg-white p-6 rounded-xl shadow-lg">
             <h3 className="text-xl font-bold text-slate-800 mb-4">Resumen de Costos</h3>
             <div className="space-y-3">
-              <div className="flex justify-between text-slate-600"><span>Subtotal:</span><span className="font-medium">Q{subtotal.toFixed(2)}</span></div>
-              <div className="flex justify-between text-slate-600"><span>IVA (12%):</span><span className="font-medium">Q{iva.toFixed(2)}</span></div>
+              <div className="flex justify-between text-slate-600"><span>Subtotal (con IVA incluido):</span><span className="font-medium">Q{subtotal.toFixed(2)}</span></div>
+              <div className="flex justify-between text-slate-600"><span>IVA 12% (incluido):</span><span className="font-medium">Q{iva.toFixed(2)}</span></div>
               <hr className="my-2 border-t border-slate-200" />
-              <div className="flex justify-between text-slate-900 text-xl font-bold"><span>Total Estimado:</span><span>Q{total.toFixed(2)}</span></div>
+              <div className="flex justify-between text-slate-900 text-xl font-bold"><span>TOTAL:</span><span>Q{total.toFixed(2)}</span></div>
             </div>
             <button
               onClick={handleSaveQuotation}
