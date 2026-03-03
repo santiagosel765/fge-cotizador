@@ -1,6 +1,6 @@
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsIn, IsString, ValidateNested } from 'class-validator';
+import { IsArray, IsIn, IsOptional, IsString, ValidateNested } from 'class-validator';
 
 export class HistoryItemDto {
   @IsIn(['user', 'assistant'])
@@ -20,8 +20,14 @@ export class ChatMessageDto {
   message!: string;
 
   @ApiProperty({ type: [HistoryItemDto], required: false })
+  @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => HistoryItemDto)
-  history?: HistoryItemDto[];
+  history?: HistoryItemDto[] = [];
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  conversationId?: string;
 }
