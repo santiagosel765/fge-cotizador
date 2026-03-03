@@ -7,6 +7,7 @@ import type { MaterialCategory, Project } from '@/types/project';
 import { RenderViewer } from '@/components/visualizaciones/RenderViewer';
 import { VirtualTourViewer } from '@/components/visualizaciones/VirtualTourViewer';
 import { TechnicalPlansSection } from '@/components/planificador/TechnicalPlansSection';
+import { exportProjectPdf } from '@/lib/pdf/exportProjectPdf';
 import MapSection from './components/MapSection';
 import ChatTab from './components/ChatTab';
 
@@ -43,6 +44,7 @@ function ProjectPageContent() {
   const [quotationSaving, setQuotationSaving] = useState(false);
   const [quotationSaved, setQuotationSaved] = useState(false);
   const [quotationError, setQuotationError] = useState('');
+  const [exportingPdf, setExportingPdf] = useState(false);
   const [renderLoading, setRenderLoading] = useState(false);
   const [renderError, setRenderError] = useState('');
   const [renderUrl, setRenderUrl] = useState<string>('');
@@ -50,6 +52,7 @@ function ProjectPageContent() {
   const [panoError, setPanoError] = useState('');
   const [panoUrl, setPanoUrl] = useState<string>('');
   const autoGenerateCalledRef = useRef(false);
+  const mapSectionRef = useRef<HTMLDivElement | null>(null);
 
   const [planner, setPlanner] = useState({
     projectType: '',
@@ -321,6 +324,46 @@ function ProjectPageContent() {
       setProject(updated);
     } finally {
       setSavingLocation(false);
+    }
+  }
+
+  async function handleExportPdf() {
+    if (!project || exportingPdf) return;
+
+    const blueprintFromAsset = project.aiAssets?.find(a => a.assetType === 'blueprint')?.storageUrl ?? '';
+
+    setExportingPdf(true);
+    try {
+      await exportProjectPdf({
+        projectName: project.name ?? 'Proyecto sin nombre',
+        projectType: planner.projectType || project.name || 'No especificado',
+        dimensions: planner.dimensions || 'No especificadas',
+        generatedAt: new Date(),
+        plans: [
+          { title: 'Plano Arquitectónico', svg: blueprintSvg || blueprintFromAsset },
+          { title: 'Plano Técnico - Acotado', svg: project.planoAcotadoSvg ?? '' },
+          { title: 'Plano Técnico - Eléctrico', svg: project.planoElectricoSvg ?? '' },
+          { title: 'Plano Técnico - Fuerza', svg: project.planoFuerzaSvg ?? '' },
+          { title: 'Plano Técnico - Hidráulico', svg: project.planoHidraulicoSvg ?? '' },
+          { title: 'Plano Técnico - Drenajes', svg: project.planoDrenajesSvg ?? '' },
+          { title: 'Plano Técnico - Cimentaciones', svg: project.planoCimentacionesSvg ?? '' },
+        ],
+        quoteItems: cart.map(item => ({
+          name: item.name,
+          unit: item.unit,
+          quantity: item.quantity,
+          unitPriceGtq: Number(item.unitPriceGtq),
+        })),
+        subtotal,
+        iva,
+        total,
+        latitude: project.latitude,
+        longitude: project.longitude,
+        addressText: project.addressText,
+        mapContainer: mapSectionRef.current,
+      });
+    } finally {
+      setExportingPdf(false);
     }
   }
 
@@ -728,12 +771,14 @@ function ProjectPageContent() {
         </section>
 
         <section>
-          <MapSection
-            latitude={project.latitude}
-            longitude={project.longitude}
-            addressText={project.addressText}
-            onLocationChange={handleLocationChange}
-          />
+          <div ref={mapSectionRef}>
+            <MapSection
+              latitude={project.latitude}
+              longitude={project.longitude}
+              addressText={project.addressText}
+              onLocationChange={handleLocationChange}
+            />
+          </div>
           {savingLocation && <p className="text-sm text-slate-500 mt-2">Guardando ubicación...</p>}
         </section>
 
@@ -744,7 +789,13 @@ function ProjectPageContent() {
           </div>
           <div className="bg-white p-6 rounded-xl shadow-lg flex flex-col items-center text-center">
             <h3 className="text-xl font-bold text-slate-800">¿Todo Listo?</h3>
-            <button className="mt-4 w-full bg-slate-800 text-white font-bold py-3 rounded-lg hover:bg-slate-900">Exportar a PDF</button>
+            <button
+              onClick={handleExportPdf}
+              disabled={exportingPdf}
+              className="mt-4 w-full bg-slate-800 text-white font-bold py-3 rounded-lg hover:bg-slate-900 disabled:bg-slate-400"
+            >
+              {exportingPdf ? '⏳ Exportando PDF...' : 'Exportar a PDF'}
+            </button>
           </div>
           <div className="bg-white p-6 rounded-xl shadow-lg flex flex-col items-center text-center">
             <h3 className="text-xl font-bold text-slate-800">¿Quieres Empezar de Nuevo?</h3>
