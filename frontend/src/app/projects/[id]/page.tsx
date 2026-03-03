@@ -6,6 +6,7 @@ import { api } from '@/lib/api';
 import type { MaterialCategory, Project } from '@/types/project';
 import { RenderViewer } from '@/components/visualizaciones/RenderViewer';
 import { VirtualTourViewer } from '@/components/visualizaciones/VirtualTourViewer';
+import { TechnicalPlansSection } from '@/components/planificador/TechnicalPlansSection';
 import MapSection from './components/MapSection';
 import ChatTab from './components/ChatTab';
 
@@ -442,11 +443,46 @@ function ProjectPageContent() {
                       Pregunta {assistantStep + 1} de {PLANNER_QUESTIONS.length}
                     </p>
                   </div>
+                ) : blueprintSvg ? (
+                  <div className="space-y-3">
+                    <div className="text-center">
+                      <span className="text-2xl">✅</span>
+                      <p className="text-sm text-green-700 font-semibold mt-1">
+                        ¡Plano arquitectónico listo!
+                      </p>
+                    </div>
+                    <p className="text-xs text-slate-600 font-medium">
+                      Genera los planos técnicos adicionales:
+                    </p>
+                    <div className="space-y-1.5">
+                      {[
+                        { icon: '📏', label: 'Plano Acotado' },
+                        { icon: '⚡', label: 'Eléctrico' },
+                        { icon: '🔌', label: 'Fuerza 220V' },
+                        { icon: '💧', label: 'Hidráulico' },
+                        { icon: '🚰', label: 'Drenajes' },
+                        { icon: '🏗️', label: 'Cimentaciones' },
+                      ].map(p => (
+                        <div
+                          key={p.label}
+                          className="flex items-center gap-2 text-xs text-slate-600 bg-white rounded-lg px-3 py-1.5 border border-slate-200"
+                        >
+                          <span>{p.icon}</span>
+                          <span>{p.label}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-xs text-slate-400 text-center mt-2">
+                      Disponibles en la sección de abajo ↓
+                    </p>
+                  </div>
                 ) : (
                   <div className="text-center space-y-3 py-2">
                     <span className="text-3xl">✅</span>
                     <p className="text-sm text-green-700 font-semibold">¡Proyecto definido!</p>
-                    <p className="text-xs text-slate-500">Ajusta los campos si necesitas y genera el plan.</p>
+                    <p className="text-xs text-slate-500">
+                      Ajusta los campos y genera el plan.
+                    </p>
                     <button
                       type="button"
                       onClick={() => setAssistantStep(0)}
@@ -537,6 +573,29 @@ function ProjectPageContent() {
               </p>
             </div>
           )}
+        </section>
+
+        <section className="bg-white rounded-xl shadow-lg overflow-hidden">
+          <div className="bg-gradient-to-r from-slate-700 to-slate-900 text-white px-6 py-5">
+            <h2 className="text-xl font-extrabold">🗂️ Planos Técnicos</h2>
+            <p className="text-slate-300 text-sm mt-1">
+              7 planos técnicos generados con IA — según normativa guatemalteca
+            </p>
+          </div>
+          <div className="p-6">
+            <TechnicalPlansSection
+              projectId={id}
+              blueprintGenerated={!!(blueprintSvg || project?.aiAssets?.find(a => a.assetType === 'blueprint'))}
+              initialPlans={{
+                acotado: project?.planoAcotadoSvg ?? '',
+                electrico: project?.planoElectricoSvg ?? '',
+                fuerza: project?.planoFuerzaSvg ?? '',
+                hidraulico: project?.planoHidraulicoSvg ?? '',
+                drenajes: project?.planoDrenajesSvg ?? '',
+                cimentaciones: project?.planoCimentacionesSvg ?? '',
+              }}
+            />
+          </div>
         </section>
 
         <section className="bg-white p-6 rounded-xl shadow-lg">
