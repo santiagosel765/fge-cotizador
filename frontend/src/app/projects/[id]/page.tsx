@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
@@ -14,6 +15,8 @@ import { CreditRequestModal } from '@/components/credit/CreditRequestModal';
 import { QuoteSummary } from '@/components/cotizacion/QuoteSummary';
 import { EstudioSueloSection } from '@/components/proyecto/EstudioSueloSection';
 import { LicenciamientoSection } from '@/components/proyecto/LicenciamientoSection';
+import { useAuth } from '@/lib/auth';
+import { ArrowLeft, LayoutDashboard, Download, User, Bot, FileText, Eye, Calculator, ClipboardList, MapPin } from 'lucide-react';
 
 interface CartItem {
   materialId: string;
@@ -40,9 +43,19 @@ type CreditRequestSubmission = {
   createdAt: string;
 };
 
+const TABS = [
+  { id: 'planificador', label: 'Planificador', Icon: Bot },
+  { id: 'planos', label: 'Planos', Icon: FileText },
+  { id: 'visualizacion', label: 'Visualización', Icon: Eye },
+  { id: 'cotizacion', label: 'Cotización', Icon: Calculator },
+  { id: 'tramites', label: 'Trámites', Icon: ClipboardList },
+  { id: 'ubicacion', label: 'Ubicación', Icon: MapPin },
+] as const;
+
 function ProjectPageContent() {
   const { id } = useParams<{ id: string }>();
   const searchParams = useSearchParams();
+  const { user } = useAuth();
   const [project, setProject] = useState<Project | null>(null);
   const [categories, setCategories] = useState<MaterialCategory[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -76,6 +89,9 @@ function ProjectPageContent() {
   const [creditSubmission, setCreditSubmission] = useState<CreditRequestSubmission | null>(null);
   const [selectedLaborType, setSelectedLaborType] = useState('economica');
   const [customLaborPercentage, setCustomLaborPercentage] = useState<string>('');
+  const [activeTab, setActiveTab] = useState<
+    'planificador' | 'planos' | 'visualizacion' | 'cotizacion' | 'tramites' | 'ubicacion'
+  >('planificador');
 
   const [planner, setPlanner] = useState({
     projectType: '',
@@ -419,16 +435,112 @@ function ProjectPageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800">
-      <header className="bg-gradient-to-r from-blue-700 to-blue-900 text-white shadow-md">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight">{project.name}</h1>
-          <p className="mt-2 text-blue-200">{project.userDescription}</p>
-        </div>
-      </header>
+    <>
+      <div className="sticky top-0 z-40 bg-white border-b border-slate-200
+    shadow-sm">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-14">
+            <div className="flex items-center gap-2">
+              <Link href="/"
+                className="flex items-center gap-1.5 text-sm text-slate-500
+              hover:text-slate-800 transition-colors">
+                <ArrowLeft size={16} />
+                <span className="hidden sm:inline">Inicio</span>
+              </Link>
+              {project && (
+                <>
+                  <span className="text-slate-300">/</span>
+                  <span className="text-sm font-semibold text-slate-800
+                max-w-[200px] truncate">
+                    {project.name}
+                  </span>
+                </>
+              )}
+            </div>
 
-      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 max-w-7xl">
-        <EstudioSueloSection projectId={id} />
+            <div className="flex items-center gap-2">
+              {user && (
+                <div className="flex items-center gap-2
+              border-r border-slate-200 pr-3 mr-1">
+                  <User size={15} className="text-slate-400" />
+                  <span className="text-xs text-slate-600 hidden sm:inline">{user.fullName}</span>
+                  <span className={`text-xs px-1.5 py-0.5 rounded-full
+                font-medium
+                ${user.role === 'admin'
+                  ? 'bg-red-100 text-red-700'
+                  : user.role === 'advisor'
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'bg-green-100 text-green-700'}`}>
+                    {user.role}
+                  </span>
+                </div>
+              )}
+
+              {user && (user.role === 'admin' || user.role === 'advisor') && (
+                <Link
+                  href="/admin"
+                  className="flex items-center gap-1.5 text-xs font-medium
+                text-slate-600 hover:text-blue-600 border border-slate-200
+                hover:border-blue-300 px-2.5 py-1.5 rounded-lg
+                transition-colors"
+                >
+                  <LayoutDashboard size={14} />
+                  <span>Panel Admin</span>
+                </Link>
+              )}
+
+              <button
+                onClick={handleExportPdf}
+                disabled={exportingPdf}
+                className="flex items-center gap-1.5 text-xs font-medium
+              text-white bg-blue-600 hover:bg-blue-700
+              disabled:opacity-50 px-2.5 py-1.5 rounded-lg
+              transition-colors"
+              >
+                <Download size={14} />
+                <span className="hidden sm:inline">
+                  {exportingPdf ? 'Exportando...' : 'Exportar PDF'}
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white border-b border-slate-200">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex overflow-x-auto scrollbar-hide">
+            {TABS.map(({ id: tabId, label, Icon }) => (
+              <button
+                key={tabId}
+                type="button"
+                onClick={() => setActiveTab(tabId)}
+                className={`flex items-center gap-2 px-4 py-3.5 text-sm
+              font-medium border-b-2 whitespace-nowrap transition-colors
+              ${activeTab === tabId
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-slate-500 hover:text-slate-700'
+              }`}
+              >
+                <Icon size={15} />
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="min-h-screen bg-slate-50 text-slate-800">
+        <header className="bg-gradient-to-r from-blue-700 to-blue-900 text-white shadow-md">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <h1 className="text-3xl font-extrabold text-white">{project?.name ?? 'Cargando...'}</h1>
+            <p className="text-blue-200 text-sm mt-1">Tipo: {project?.userDescription ?? ''}</p>
+          </div>
+        </header>
+
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          {activeTab === 'planificador' && (
+            <div className="space-y-6">
         <section className="bg-white rounded-xl shadow-lg overflow-hidden">
           {/* Header de sección */}
           <div className="bg-gradient-to-r from-blue-700 to-blue-900 text-white px-6 py-5">
@@ -612,7 +724,11 @@ function ProjectPageContent() {
             )}
           </div>
         </section>
+            </div>
+          )}
 
+          {activeTab === 'planos' && (
+            <div className="space-y-6">
         <section id="section-blueprint" className="bg-white p-6 rounded-xl shadow-lg">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-2xl font-bold">📐 Plano Arquitectónico 2D</h2>
@@ -665,7 +781,6 @@ function ProjectPageContent() {
             </div>
           )}
         </section>
-
         <section className="bg-white rounded-xl shadow-lg overflow-hidden">
           <div className="bg-gradient-to-r from-slate-700 to-slate-900 text-white px-6 py-5">
             <h2 className="text-xl font-extrabold">🗂️ Planos Técnicos</h2>
@@ -688,7 +803,11 @@ function ProjectPageContent() {
             />
           </div>
         </section>
+            </div>
+          )}
 
+          {activeTab === 'visualizacion' && (
+            <div className="space-y-6">
         <section className="bg-white p-6 rounded-xl shadow-lg">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-2xl font-bold">🖼️ Render Fotorrealista</h2>
@@ -708,7 +827,6 @@ function ProjectPageContent() {
             <p className="text-slate-500 text-sm mt-2">Genera el plan primero para activar el render.</p>
           )}
         </section>
-
         <section className="bg-white p-6 rounded-xl shadow-lg">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-2xl font-bold">🌐 Tour Virtual 360°</h2>
@@ -728,7 +846,11 @@ function ProjectPageContent() {
             <p className="text-slate-500 text-sm mt-2">Genera el plan primero para activar el tour.</p>
           )}
         </section>
+            </div>
+          )}
 
+          {activeTab === 'cotizacion' && (
+            <div className="space-y-6">
         <section className="space-y-6">
           <div className="bg-white rounded-xl shadow-lg overflow-hidden">
             <h2 className="text-2xl font-bold text-slate-800 p-6">Cotización</h2>
@@ -859,9 +981,18 @@ function ProjectPageContent() {
             )}
           </div>
         </section>
+            </div>
+          )}
 
-        <LicenciamientoSection />
+          {activeTab === 'tramites' && (
+            <div className="space-y-6">
+              <EstudioSueloSection projectId={id} />
+              <LicenciamientoSection />
+            </div>
+          )}
 
+          {activeTab === 'ubicacion' && (
+            <div className="space-y-6">
         <section>
           <div ref={mapSectionRef}>
             <MapSection
@@ -873,7 +1004,6 @@ function ProjectPageContent() {
           </div>
           {savingLocation && <p className="text-sm text-slate-500 mt-2">Guardando ubicación...</p>}
         </section>
-
         <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-white p-6 rounded-xl shadow-lg flex flex-col items-center text-center">
             <h3 className="text-xl font-bold text-slate-800">¿Necesitas Financiamiento?</h3>
@@ -900,7 +1030,7 @@ function ProjectPageContent() {
               disabled={exportingPdf}
               className="mt-4 w-full bg-slate-800 text-white font-bold py-3 rounded-lg hover:bg-slate-900 disabled:bg-slate-400"
             >
-              {exportingPdf ? '⏳ Exportando PDF...' : 'Exportar a PDF'}
+              Exportar PDF
             </button>
           </div>
           <div className="bg-white p-6 rounded-xl shadow-lg flex flex-col items-center text-center">
@@ -908,8 +1038,10 @@ function ProjectPageContent() {
             <button onClick={() => setCart([])} className="mt-4 w-full bg-red-500 text-white font-bold py-3 rounded-lg hover:bg-red-600">Limpiar Cotización</button>
           </div>
         </section>
-
-      </main>
+            </div>
+          )}
+        </div>
+      </div>
 
       <CreditRequestModal
         isOpen={isCreditModalOpen}
@@ -921,7 +1053,7 @@ function ProjectPageContent() {
         }}
       />
       <ChatTab projectId={project.id} onGeneratePlan={handleGeneratePlan} />
-    </div>
+    </>
   );
 }
 

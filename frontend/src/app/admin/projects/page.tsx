@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/lib/auth';
 import { ProjectStatus } from '@/types/project.types';
 import { ProjectRecord, projectsService } from '@/services/projects.service';
+import { Archive, ExternalLink, Eye } from 'lucide-react';
 
 const statusOptions: Array<{ value: 'all' | ProjectStatus; label: string }> = [
   { value: 'all', label: 'Todos' },
@@ -196,8 +197,29 @@ export default function AdminProjectsPage(): JSX.Element {
                   <td className="px-2 py-2 text-slate-600">{new Date(project.createdAt).toLocaleDateString('es-GT')}</td>
                   <td className="px-2 py-2">
                     <div className="flex flex-wrap gap-2">
-                      <button type="button" onClick={() => { void openProjectModal(project.id); }} className="rounded border px-2 py-1 hover:bg-slate-100">👁️ Ver</button>
-                      <button type="button" onClick={() => { void handleArchive(project.id); }} className="rounded border border-red-200 px-2 py-1 text-red-700 hover:bg-red-50">🗑️ Archivar</button>
+                      <Link
+                        href={`/projects/${project.id}`}
+                        className="inline-flex items-center gap-1 rounded border px-2 py-1 hover:bg-slate-100"
+                      >
+                        <ExternalLink size={15} />
+                        Abrir
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => { void openProjectModal(project.id); }}
+                        className="inline-flex items-center gap-1 rounded border px-2 py-1 hover:bg-slate-100"
+                      >
+                        <Eye size={15} />
+                        Ver
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { void handleArchive(project.id); }}
+                        className="inline-flex items-center gap-1 rounded border border-red-200 px-2 py-1 text-red-700 hover:bg-red-50"
+                      >
+                        <Archive size={15} />
+                        Archivar
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -308,9 +330,15 @@ export default function AdminProjectsPage(): JSX.Element {
               </div>
             </div>
 
-            <div className="mt-4 flex justify-end">
-              <Link href={`/projects/${selectedProject.id}`} className="rounded bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-600">
-                Abrir Proyecto Completo
+            <div className="mt-3">
+              <Link
+                href={`/projects/${selectedProject.id}`}
+                className="flex items-center justify-center gap-2 w-full
+        bg-blue-600 hover:bg-blue-700 text-white font-semibold
+        py-2.5 px-4 rounded-lg transition-colors text-sm"
+              >
+                <ExternalLink size={15} />
+                Abrir y editar proyecto
               </Link>
             </div>
           </div>
