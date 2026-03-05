@@ -8,6 +8,7 @@ import { useAuth } from '@/lib/auth';
 const navItems = [
   { href: '/admin/users', label: '👥 Usuarios' },
   { href: '/admin/ipmc', label: '📊 IPMC INE' },
+  { href: '/admin/labor', label: '👷 Mano de Obra' },
   { href: '/admin/projects', label: '🏗️ Proyectos' },
 ];
 

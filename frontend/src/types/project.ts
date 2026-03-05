@@ -33,6 +33,9 @@ export interface Quotation {
   subtotalGtq: number;
   ivaGtq: number;
   totalGtq: number;
+  laborGtq?: number | null;
+  laborPct?: number | null;
+  laborProjectType?: string | null;
   ivaIncluido: boolean;
   status: 'draft' | 'finalized';
   items?: QuotationItem[];

@@ -45,7 +45,7 @@ function truncate(text: string | null | undefined, max = 60): string {
   return `${text.slice(0, max)}...`;
 }
 
-function formatMoney(value?: number): string {
+function formatMoney(value?: number | null): string {
   if (value === undefined || value === null || Number.isNaN(value)) return 'Sin cotizar';
   return new Intl.NumberFormat('es-GT', { style: 'currency', currency: 'GTQ' }).format(value);
 }
@@ -260,16 +260,41 @@ export default function AdminProjectsPage(): JSX.Element {
                 <p className="font-semibold text-slate-800">Resumen de cotización</p>
                 {(selectedProject.quotations?.length ?? 0) > 0 ? (
                   (() => {
-                    const quotation = selectedProject.quotations![selectedProject.quotations!.length - 1]!;
+                    const q = selectedProject.quotations![selectedProject.quotations!.length - 1]!;
+                    const laborGtq = Number(q.laborGtq ?? 0);
+                    const laborPct = q.laborPct ? Number(q.laborPct) * 100 : 0;
+                    const grandTotal = Number(q.subtotalGtq) + laborGtq;
                     return (
-                      <div className="mt-1 space-y-1">
-                        <p>Subtotal: {formatMoney(quotation.subtotalGtq)}</p>
-                        <p>IVA: {formatMoney(quotation.ivaGtq)}</p>
-                        <p>Total: {formatMoney(quotation.totalGtq)}</p>
+                      <div className="mt-1 space-y-2 text-sm">
+                        <div className="font-semibold text-slate-700">Materiales</div>
+                        <div className="flex justify-between text-slate-600">
+                          <span>Subtotal (IVA incl.)</span>
+                          <span>{formatMoney(q.subtotalGtq)}</span>
+                        </div>
+                        {laborGtq > 0 && (
+                          <>
+                            <div className="font-semibold text-slate-700 pt-1">
+                              Mano de Obra ({laborPct.toFixed(0)}% — {q.laborProjectType ?? ''})
+                            </div>
+                            <div className="flex justify-between text-slate-600">
+                              <span>Subtotal (IVA incl.)</span>
+                              <span>{formatMoney(q.laborGtq)}</span>
+                            </div>
+                          </>
+                        )}
+                        <div className="flex justify-between font-bold text-slate-900 border-t pt-2">
+                          <span>TOTAL GENERAL</span>
+                          <span>{formatMoney(grandTotal)}</span>
+                        </div>
+                        {laborGtq === 0 && (
+                          <p className="text-xs text-amber-600">
+                            * Sin mano de obra registrada en esta cotización
+                          </p>
+                        )}
                       </div>
                     );
                   })()
-                ) : <p className="text-slate-600">Sin cotizar</p>}
+                ) : <p className="text-slate-500 text-sm">Sin cotizar</p>}
               </div>
             </div>
 

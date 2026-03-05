@@ -10,6 +10,9 @@ interface QuotationSummary {
   subtotalGtq?: number;
   ivaGtq?: number;
   totalGtq?: number;
+  laborGtq?: number | null;
+  laborPct?: number | null;
+  laborProjectType?: string | null;
 }
 
 export interface ProjectAiAsset {
