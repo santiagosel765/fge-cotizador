@@ -5,6 +5,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { DataSource } from 'typeorm';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
+import { seedAdminUser } from './modules/users/seeds/admin-user.seed';
 import { seedAnonymousUser } from './modules/users/seeds/anonymous-user.seed';
 
 async function bootstrap(): Promise<void> {
@@ -30,6 +31,7 @@ async function bootstrap(): Promise<void> {
 
   const dataSource = app.get(DataSource);
   await seedAnonymousUser(dataSource);
+  await seedAdminUser(dataSource);
 }
 
 void bootstrap();
