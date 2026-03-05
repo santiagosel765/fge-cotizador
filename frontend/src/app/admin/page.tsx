@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth';
 import { ipmcService } from '@/services/ipmc.service';
+import { projectsService } from '@/services/projects.service';
 import { usersService } from '@/services/users.service';
 
 interface StatCardProps {
@@ -27,6 +28,8 @@ export default function AdminDashboardPage(): JSX.Element {
   const { token } = useAuth();
   const [usersCount, setUsersCount] = useState<string>('...');
   const [latestIpmc, setLatestIpmc] = useState<string>('...');
+  const [projectsCount, setProjectsCount] = useState<string>('...');
+  const [projectsBreakdown, setProjectsBreakdown] = useState<string>('...');
 
   useEffect(() => {
     if (!token) {
@@ -40,6 +43,19 @@ export default function AdminDashboardPage(): JSX.Element {
         setUsersCount(String(users.length));
       } catch {
         setUsersCount('N/D');
+      }
+
+      try {
+        const projects = await projectsService.listProjects({}, safeToken);
+        const withBlueprint = projects.filter((project) => (project.aiAssets?.length ?? 0) > 0).length;
+        const quoted = projects.filter((project) => (project.quotations?.length ?? 0) > 0).length;
+        const credits = projects.filter((project) => project.status === 'credit_requested').length;
+
+        setProjectsCount(String(projects.length));
+        setProjectsBreakdown(`${withBlueprint} con plano | ${quoted} cotizados | ${credits} créditos`);
+      } catch {
+        setProjectsCount('N/D');
+        setProjectsBreakdown('Sin datos');
       }
 
       try {
@@ -69,8 +85,9 @@ export default function AdminDashboardPage(): JSX.Element {
         />
         <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="text-sm font-semibold text-slate-500">Proyectos activos</h2>
-          <p className="mt-3 text-3xl font-extrabold text-emerald-700">--</p>
-          <Link href="/" className="mt-2 inline-block text-sm text-emerald-700 hover:underline">
+          <p className="mt-3 text-3xl font-extrabold text-emerald-700">{projectsCount}</p>
+          <p className="mt-2 text-sm text-slate-600">{projectsBreakdown}</p>
+          <Link href="/admin/projects" className="mt-2 inline-block text-sm text-emerald-700 hover:underline">
             Ver proyectos
           </Link>
         </article>

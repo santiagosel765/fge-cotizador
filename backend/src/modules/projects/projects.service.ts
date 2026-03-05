@@ -28,6 +28,7 @@ export class ProjectsService {
     const qb = this.projectsRepo
       .createQueryBuilder('p')
       .leftJoinAndSelect('p.quotations', 'q')
+      .leftJoinAndSelect('p.aiAssets', 'a')
       .where('p.deletedAt IS NULL')
       .orderBy('p.createdAt', 'DESC');
 
