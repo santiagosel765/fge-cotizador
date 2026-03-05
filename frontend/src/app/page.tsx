@@ -1,10 +1,48 @@
-import Link from 'next/link';
+'use client';
 
-export default function HomePage() {
+import Link from 'next/link';
+import { useAuth } from '@/lib/auth';
+
+export default function HomePage(): JSX.Element {
+  const { user, logout, isLoading } = useAuth();
+  const canAccessAdmin = user?.role === 'admin' || user?.role === 'advisor';
+
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-800">
       <header className="bg-gradient-to-r from-blue-700 to-blue-900 text-white shadow-md">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex justify-end">
+            {!isLoading && !user ? (
+              <Link
+                href="/login"
+                className="rounded-md border border-white px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-white hover:text-blue-900"
+              >
+                Administración
+              </Link>
+            ) : null}
+
+            {!isLoading && canAccessAdmin ? (
+              <div className="flex items-center gap-2">
+                <Link
+                  href="/admin"
+                  className="rounded-md border border-white px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-white hover:text-blue-900"
+                >
+                  Panel Admin
+                </Link>
+                <span className="text-sm text-blue-100">{user.fullName}</span>
+                <button
+                  type="button"
+                  onClick={logout}
+                  className="rounded-md bg-white/20 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-white/30"
+                >
+                  Cerrar sesión
+                </button>
+              </div>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 pb-16 text-center">
           <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight">
             Cotizador de Construcción Génesis Empresarial
           </h1>

@@ -2,6 +2,7 @@ import './globals.css';
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import { ChatWrapper } from '@/components/chat/ChatWrapper';
+import { AuthProvider } from '@/lib/auth';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -14,8 +15,10 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="es">
       <body className={inter.className}>
-        {children}
-        <ChatWrapper />
+        <AuthProvider>
+          {children}
+          <ChatWrapper />
+        </AuthProvider>
       </body>
     </html>
   );
