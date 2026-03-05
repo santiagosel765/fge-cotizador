@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, useMemo, useRef, useState } from 'react';
 import { ipmcService, IpMcImportResult } from '@/services/ipmc.service';
 
 interface IpMcUploadFormProps {
@@ -31,6 +31,7 @@ export function IpMcUploadForm({ onImportSuccess }: Readonly<IpMcUploadFormProps
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<IpMcImportResult | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const years = useMemo(() => {
     const thisYear = new Date().getFullYear();
@@ -58,8 +59,7 @@ export function IpMcUploadForm({ onImportSuccess }: Readonly<IpMcUploadFormProps
       setResult(importResult);
       onImportSuccess(importResult);
       setFile(null);
-      const fileInput = event.currentTarget.elements.namedItem('pdf') as HTMLInputElement | null;
-      if (fileInput) fileInput.value = '';
+      if (fileInputRef.current) fileInputRef.current.value = '';
     } catch (uploadError) {
       setError(uploadError instanceof Error ? uploadError.message : 'No se pudo importar el PDF.');
     } finally {
@@ -127,6 +127,7 @@ export function IpMcUploadForm({ onImportSuccess }: Readonly<IpMcUploadFormProps
         <label className="flex flex-col gap-1 text-sm text-slate-700 md:col-span-2">
           Archivo PDF
           <input
+            ref={fileInputRef}
             className="rounded border border-slate-300 px-3 py-2"
             type="file"
             name="pdf"
