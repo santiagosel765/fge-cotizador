@@ -46,6 +46,20 @@ function buildUrl(path: string): string {
   return `${BASE_URL}${path.startsWith('/') ? path : `/${path}`}`;
 }
 
+function withAuthHeaders(token?: string, extraHeaders?: HeadersInit): HeadersInit {
+  const authToken = token ?? getSessionToken();
+  return {
+    ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+    ...extraHeaders,
+  };
+}
+
+
+function getSessionToken(): string | undefined {
+  if (typeof window === 'undefined') return undefined;
+  return sessionStorage.getItem('auth_token') ?? undefined;
+}
+
 async function parseApiError(response: Response): Promise<Error> {
   let message = `Error ${response.status}`;
   try {
@@ -63,7 +77,7 @@ async function parseApiError(response: Response): Promise<Error> {
 }
 
 export const ipmcService = {
-  async uploadPdf(payload: UploadPdfPayload): Promise<IpMcImportResult> {
+  async uploadPdf(payload: UploadPdfPayload, token?: string): Promise<IpMcImportResult> {
     const formData = new FormData();
     formData.append('year', String(payload.year));
     formData.append('month', String(payload.month));
@@ -71,6 +85,7 @@ export const ipmcService = {
 
     const response = await fetch(buildUrl('/ipmc/import'), {
       method: 'POST',
+      headers: withAuthHeaders(token),
       body: formData,
     });
 
@@ -81,12 +96,12 @@ export const ipmcService = {
     return response.json() as Promise<IpMcImportResult>;
   },
 
-  async importFromUrl(payload: ImportFromUrlPayload): Promise<IpMcImportResult> {
+  async importFromUrl(payload: ImportFromUrlPayload, token?: string): Promise<IpMcImportResult> {
     const response = await fetch(buildUrl('/ipmc/import-from-url'), {
       method: 'POST',
-      headers: {
+      headers: withAuthHeaders(token, {
         'Content-Type': 'application/json',
-      },
+      }),
       body: JSON.stringify(payload),
     });
 
@@ -97,8 +112,11 @@ export const ipmcService = {
     return response.json() as Promise<IpMcImportResult>;
   },
 
-  async listReports(): Promise<IpMcReport[]> {
-    const response = await fetch(buildUrl('/ipmc/reports'), { method: 'GET' });
+  async listReports(token?: string): Promise<IpMcReport[]> {
+    const response = await fetch(buildUrl('/ipmc/reports'), {
+      method: 'GET',
+      headers: withAuthHeaders(token),
+    });
     if (!response.ok) {
       throw await parseApiError(response);
     }
@@ -106,8 +124,11 @@ export const ipmcService = {
     return response.json() as Promise<IpMcReport[]>;
   },
 
-  async getReportItems(reportId: string): Promise<IpMcItem[]> {
-    const response = await fetch(buildUrl(`/ipmc/reports/${reportId}/items`), { method: 'GET' });
+  async getReportItems(reportId: string, token?: string): Promise<IpMcItem[]> {
+    const response = await fetch(buildUrl(`/ipmc/reports/${reportId}/items`), {
+      method: 'GET',
+      headers: withAuthHeaders(token),
+    });
     if (!response.ok) {
       throw await parseApiError(response);
     }
@@ -115,8 +136,11 @@ export const ipmcService = {
     return response.json() as Promise<IpMcItem[]>;
   },
 
-  async getLatestReport(): Promise<IpMcReport> {
-    const response = await fetch(buildUrl('/ipmc/reports/latest'), { method: 'GET' });
+  async getLatestReport(token?: string): Promise<IpMcReport> {
+    const response = await fetch(buildUrl('/ipmc/reports/latest'), {
+      method: 'GET',
+      headers: withAuthHeaders(token),
+    });
     if (!response.ok) {
       throw await parseApiError(response);
     }
