@@ -7,6 +7,7 @@ import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { seedAdminUser } from './modules/users/seeds/admin-user.seed';
 import { seedAnonymousUser } from './modules/users/seeds/anonymous-user.seed';
+import { seedLaborConfigs } from './modules/quotations/seeds/labor-config.seed';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
@@ -32,6 +33,7 @@ async function bootstrap(): Promise<void> {
   const dataSource = app.get(DataSource);
   await seedAnonymousUser(dataSource);
   await seedAdminUser(dataSource);
+  await seedLaborConfigs(dataSource);
 }
 
 void bootstrap();
