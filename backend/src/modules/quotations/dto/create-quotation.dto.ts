@@ -1,6 +1,6 @@
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsNumber, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
+import { IsArray, IsNumber, IsOptional, IsString, Max, Min, ValidateNested } from 'class-validator';
 
 export class CreateQuotationItemDto {
   @ApiProperty()
@@ -33,4 +33,28 @@ export class CreateQuotationDto {
   @ValidateNested({ each: true })
   @Type(() => CreateQuotationItemDto)
   items!: CreateQuotationItemDto[];
+
+  @ApiProperty({
+    required: false,
+    type: Object,
+    example: { projectType: 'economica', customPercentage: 35 },
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => LaborConfigDto)
+  laborConfig?: LaborConfigDto;
+}
+
+export class LaborConfigDto {
+  @ApiProperty({ required: false, example: 'economica' })
+  @IsOptional()
+  @IsString()
+  projectType?: string;
+
+  @ApiProperty({ required: false, example: 35, description: 'Porcentaje en escala 0-100' })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  customPercentage?: number;
 }

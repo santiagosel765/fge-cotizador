@@ -36,6 +36,15 @@ export class Quotation {
   @Column('decimal', { precision: 12, scale: 2 })
   totalGtq!: number;
 
+  @Column('decimal', { precision: 12, scale: 2, nullable: true })
+  laborGtq!: number | null;
+
+  @Column('decimal', { precision: 5, scale: 4, nullable: true })
+  laborPct!: number | null;
+
+  @Column('varchar', { length: 50, nullable: true })
+  laborProjectType!: string | null;
+
   @Column({ type: 'enum', enum: QuotationStatus, default: QuotationStatus.DRAFT })
   status!: QuotationStatus;
 

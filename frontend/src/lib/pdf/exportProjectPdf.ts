@@ -10,6 +10,13 @@ export interface ProjectPdfQuoteItem {
   unitPriceGtq: number;
 }
 
+export interface ProjectPdfLabor {
+  subtotal: number;
+  iva: number;
+  percentage: number;
+  projectType: string;
+}
+
 export interface ExportProjectPdfInput {
   projectName: string;
   projectType?: string;
@@ -20,6 +27,8 @@ export interface ExportProjectPdfInput {
   subtotal: number;
   iva: number;
   total: number;
+  labor?: ProjectPdfLabor | null;
+  grandIva?: number;
   latitude?: number;
   longitude?: number;
   addressText?: string;
@@ -166,14 +175,37 @@ export async function exportProjectPdf(input: ExportProjectPdfInput): Promise<vo
   });
 
   const quoteDoc = doc as unknown as JsPdfAutoTableDoc;
-  const totalsStartY = (quoteDoc.lastAutoTable?.finalY ?? 40) + 10;
+  let currentY = (quoteDoc.lastAutoTable?.finalY ?? 40) + 10;
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(11);
-  doc.text(`Subtotal (IVA incluido): ${formatCurrency(input.subtotal)}`, 20, totalsStartY);
-  doc.text(`IVA 12% (incluido): ${formatCurrency(input.iva)}`, 20, totalsStartY + 8);
+  doc.text(`Subtotal materiales (IVA incluido): ${formatCurrency(input.subtotal)}`, 20, currentY);
+  doc.text(`IVA materiales 12% (incluido): ${formatCurrency(input.iva)}`, 20, currentY + 8);
+  currentY += 18;
+
+  if (input.labor && input.labor.subtotal > 0) {
+    autoTable(doc, {
+      startY: currentY,
+      head: [[`Mano de Obra (Estimado ${input.labor.percentage.toFixed(2)}%)`, 'Monto']],
+      body: [
+        ['Subtotal mano de obra (IVA incluido)', formatCurrency(input.labor.subtotal)],
+        ['IVA mano de obra 12% (incluido)', formatCurrency(input.labor.iva)],
+        ['Tipo aplicado', input.labor.projectType],
+      ],
+      theme: 'grid',
+      styles: { fontSize: 10 },
+      headStyles: { fillColor: [55, 65, 81] },
+    });
+    currentY = ((doc as unknown as JsPdfAutoTableDoc).lastAutoTable?.finalY ?? currentY) + 8;
+    doc.setFontSize(10);
+    doc.text('Mano de obra es estimado referencial', 20, currentY);
+    currentY += 10;
+  }
+
   doc.setFont('helvetica', 'bold');
-  doc.text(`TOTAL: ${formatCurrency(input.total)}`, 20, totalsStartY + 16);
+  doc.setFontSize(12);
+  doc.text(`IVA total incluido: ${formatCurrency(input.grandIva ?? input.iva)}`, 20, currentY);
+  doc.text(`TOTAL GENERAL: ${formatCurrency(input.total)}`, 20, currentY + 8);
 
   doc.addPage();
   doc.setFont('helvetica', 'bold');

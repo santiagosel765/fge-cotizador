@@ -11,6 +11,7 @@ import { exportProjectPdf } from '@/lib/pdf/exportProjectPdf';
 import MapSection from './components/MapSection';
 import ChatTab from './components/ChatTab';
 import { CreditRequestModal } from '@/components/credit/CreditRequestModal';
+import { QuoteSummary } from '@/components/cotizacion/QuoteSummary';
 
 interface CartItem {
   materialId: string;
@@ -22,6 +23,13 @@ interface CartItem {
 
 const IVA_RATE = 0.12;
 
+const LABOR_OPTIONS: Array<{ value: string; label: string; percentage: number }> = [
+  { value: 'economica', label: 'Vivienda económica', percentage: 35 },
+  { value: 'media', label: 'Vivienda media', percentage: 40 },
+  { value: 'ampliacion', label: 'Ampliación', percentage: 30 },
+  { value: 'obra_gris', label: 'Obra gris', percentage: 25 },
+  { value: 'sin_mano_obra', label: 'Sin mano de obra', percentage: 0 },
+];
 
 type CreditRequestSubmission = {
   id: string;
@@ -64,6 +72,8 @@ function ProjectPageContent() {
   const mapSectionRef = useRef<HTMLDivElement | null>(null);
   const [isCreditModalOpen, setIsCreditModalOpen] = useState(false);
   const [creditSubmission, setCreditSubmission] = useState<CreditRequestSubmission | null>(null);
+  const [selectedLaborType, setSelectedLaborType] = useState('economica');
+  const [customLaborPercentage, setCustomLaborPercentage] = useState<string>('');
 
   const [planner, setPlanner] = useState({
     projectType: '',
@@ -131,7 +141,20 @@ function ProjectPageContent() {
 
   const subtotal = useMemo(() => cart.reduce((acc, item) => acc + Number(item.unitPriceGtq) * item.quantity, 0), [cart]);
   const iva = (subtotal * IVA_RATE) / (1 + IVA_RATE);
-  const total = subtotal;
+  const selectedLaborOption = LABOR_OPTIONS.find((option) => option.value === selectedLaborType);
+  const selectedLaborPercentage = selectedLaborOption?.percentage ?? 35;
+  const customLaborPercentageValue = customLaborPercentage.trim() === '' ? undefined : Number(customLaborPercentage);
+  const hasValidCustomLaborPercentage = typeof customLaborPercentageValue === 'number'
+    && Number.isFinite(customLaborPercentageValue)
+    && customLaborPercentageValue >= 0
+    && customLaborPercentageValue <= 100;
+  const appliedLaborPercentage = hasValidCustomLaborPercentage
+    ? customLaborPercentageValue
+    : selectedLaborPercentage;
+  const laborEstimate = subtotal * (appliedLaborPercentage / 100);
+  const laborIva = (laborEstimate * IVA_RATE) / (1 + IVA_RATE);
+  const grandTotal = subtotal + laborEstimate;
+  const grandIva = iva + laborIva;
 
   async function handleGeneratePlan() {
     if (!project) return;
@@ -224,6 +247,10 @@ function ProjectPageContent() {
           quantity: item.quantity,
           unitPriceGtq: item.unitPriceGtq,
         })),
+        laborConfig: {
+          projectType: selectedLaborType,
+          customPercentage: hasValidCustomLaborPercentage ? customLaborPercentageValue : undefined,
+        },
       });
       setQuotationSaved(true);
       setTimeout(() => setQuotationSaved(false), 3000);
@@ -367,7 +394,14 @@ function ProjectPageContent() {
         })),
         subtotal,
         iva,
-        total,
+        total: grandTotal,
+        labor: laborEstimate > 0 ? {
+          subtotal: laborEstimate,
+          iva: laborIva,
+          percentage: appliedLaborPercentage,
+          projectType: selectedLaborType,
+        } : null,
+        grandIva,
         latitude: project.latitude,
         longitude: project.longitude,
         addressText: project.addressText,
@@ -747,6 +781,44 @@ function ProjectPageContent() {
           </div>
 
           <div className="bg-white p-6 rounded-xl shadow-lg">
+            <h2 className="text-2xl font-bold mb-4">👷 Estimado de Mano de Obra</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <label className="text-sm text-slate-600">
+                <span className="block mb-2 font-medium text-slate-700">Tipo de proyecto para mano de obra</span>
+                <select
+                  value={selectedLaborType}
+                  onChange={(e) => setSelectedLaborType(e.target.value)}
+                  className="w-full p-3 bg-slate-50 border rounded-lg"
+                >
+                  {LABOR_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label} ({option.percentage}%)
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="text-sm text-slate-600">
+                <span className="block mb-2 font-medium text-slate-700">% personalizado (opcional)</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={customLaborPercentage}
+                  onChange={(e) => setCustomLaborPercentage(e.target.value)}
+                  className="w-full p-3 bg-slate-50 border rounded-lg"
+                  placeholder="Ej. 35"
+                />
+              </label>
+            </div>
+            {!hasValidCustomLaborPercentage && customLaborPercentage.trim() !== '' && (
+              <p className="mt-2 text-xs text-amber-600">Ingresa un porcentaje entre 0 y 100 para aplicar el override.</p>
+            )}
+            <p className="mt-4 text-sm text-slate-700">
+              Estimado: <span className="font-semibold">Q{laborEstimate.toFixed(2)}</span> (IVA incluido)
+            </p>
+          </div>
+
+          <div className="bg-white p-6 rounded-xl shadow-lg">
             <h2 className="text-2xl font-bold mb-4">Agregar Material</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <select value={selectedMaterialId} onChange={e => setSelectedMaterialId(e.target.value)} className="p-3 bg-slate-50 border rounded-lg md:col-span-2">
@@ -762,12 +834,16 @@ function ProjectPageContent() {
 
           <div className="bg-white p-6 rounded-xl shadow-lg">
             <h3 className="text-xl font-bold text-slate-800 mb-4">Resumen de Costos</h3>
-            <div className="space-y-3">
-              <div className="flex justify-between text-slate-600"><span>Subtotal (con IVA incluido):</span><span className="font-medium">Q{subtotal.toFixed(2)}</span></div>
-              <div className="flex justify-between text-slate-600"><span>IVA 12% (incluido):</span><span className="font-medium">Q{iva.toFixed(2)}</span></div>
-              <hr className="my-2 border-t border-slate-200" />
-              <div className="flex justify-between text-slate-900 text-xl font-bold"><span>TOTAL:</span><span>Q{total.toFixed(2)}</span></div>
-            </div>
+            <QuoteSummary
+              subtotal={subtotal}
+              iva={iva}
+              laborSubtotal={laborEstimate}
+              laborIva={laborIva}
+              laborPercentage={appliedLaborPercentage}
+              laborProjectType={selectedLaborType}
+              grandIva={grandIva}
+              total={grandTotal}
+            />
             <button
               onClick={handleSaveQuotation}
               disabled={quotationSaving || cart.length === 0}
