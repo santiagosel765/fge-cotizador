@@ -8,7 +8,7 @@ import { useAuth } from '@/lib/auth';
 const navItems = [
   { href: '/admin/users', label: '👥 Usuarios' },
   { href: '/admin/ipmc', label: '📊 IPMC INE' },
-  { href: '/', label: '🏠 Proyectos' },
+  { href: '/admin/projects', label: '🏗️ Proyectos' },
 ];
 
 export default function AdminLayout({ children }: Readonly<{ children: React.ReactNode }>): JSX.Element {
