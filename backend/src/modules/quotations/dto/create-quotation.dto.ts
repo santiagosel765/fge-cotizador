@@ -23,6 +23,20 @@ export class CreateQuotationItemDto {
   note?: string;
 }
 
+export class LaborConfigDto {
+  @ApiProperty({ required: false, example: 'economica' })
+  @IsOptional()
+  @IsString()
+  projectType?: string;
+
+  @ApiProperty({ required: false, example: 35, description: 'Porcentaje en escala 0-100' })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  customPercentage?: number;
+}
+
 export class CreateQuotationDto {
   @ApiProperty()
   @IsString()
@@ -43,18 +57,4 @@ export class CreateQuotationDto {
   @ValidateNested()
   @Type(() => LaborConfigDto)
   laborConfig?: LaborConfigDto;
-}
-
-export class LaborConfigDto {
-  @ApiProperty({ required: false, example: 'economica' })
-  @IsOptional()
-  @IsString()
-  projectType?: string;
-
-  @ApiProperty({ required: false, example: 35, description: 'Porcentaje en escala 0-100' })
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  @Max(100)
-  customPercentage?: number;
 }
