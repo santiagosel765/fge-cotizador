@@ -12,6 +12,8 @@ import MapSection from './components/MapSection';
 import ChatTab from './components/ChatTab';
 import { CreditRequestModal } from '@/components/credit/CreditRequestModal';
 import { QuoteSummary } from '@/components/cotizacion/QuoteSummary';
+import { EstudioSueloSection } from '@/components/proyecto/EstudioSueloSection';
+import { LicenciamientoSection } from '@/components/proyecto/LicenciamientoSection';
 
 interface CartItem {
   materialId: string;
@@ -426,6 +428,7 @@ function ProjectPageContent() {
       </header>
 
       <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 max-w-7xl">
+        <EstudioSueloSection projectId={id} />
         <section className="bg-white rounded-xl shadow-lg overflow-hidden">
           {/* Header de sección */}
           <div className="bg-gradient-to-r from-blue-700 to-blue-900 text-white px-6 py-5">
@@ -856,6 +859,8 @@ function ProjectPageContent() {
             )}
           </div>
         </section>
+
+        <LicenciamientoSection />
 
         <section>
           <div ref={mapSectionRef}>

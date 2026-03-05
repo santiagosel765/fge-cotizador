@@ -258,43 +258,53 @@ export default function AdminProjectsPage(): JSX.Element {
 
               <div className="rounded-lg border p-3">
                 <p className="font-semibold text-slate-800">Resumen de cotización</p>
-                {(selectedProject.quotations?.length ?? 0) > 0 ? (
-                  (() => {
-                    const q = selectedProject.quotations![selectedProject.quotations!.length - 1]!;
-                    const laborGtq = Number(q.laborGtq ?? 0);
-                    const laborPct = q.laborPct ? Number(q.laborPct) * 100 : 0;
-                    const grandTotal = Number(q.subtotalGtq) + laborGtq;
-                    return (
-                      <div className="mt-1 space-y-2 text-sm">
-                        <div className="font-semibold text-slate-700">Materiales</div>
-                        <div className="flex justify-between text-slate-600">
-                          <span>Subtotal (IVA incl.)</span>
-                          <span>{formatMoney(q.subtotalGtq)}</span>
-                        </div>
-                        {laborGtq > 0 && (
-                          <>
-                            <div className="font-semibold text-slate-700 pt-1">
-                              Mano de Obra ({laborPct.toFixed(0)}% — {q.laborProjectType ?? ''})
-                            </div>
-                            <div className="flex justify-between text-slate-600">
-                              <span>Subtotal (IVA incl.)</span>
-                              <span>{formatMoney(q.laborGtq)}</span>
-                            </div>
-                          </>
-                        )}
-                        <div className="flex justify-between font-bold text-slate-900 border-t pt-2">
-                          <span>TOTAL GENERAL</span>
-                          <span>{formatMoney(grandTotal)}</span>
-                        </div>
-                        {laborGtq === 0 && (
-                          <p className="text-xs text-amber-600">
-                            * Sin mano de obra registrada en esta cotización
-                          </p>
-                        )}
+                {(selectedProject.quotations?.length ?? 0) > 0 ? (() => {
+                  const q = selectedProject.quotations![selectedProject.quotations!.length - 1]!;
+                  const laborGtq = Number(q.laborGtq ?? 0);
+                  const laborPct = q.laborPct ? Number(q.laborPct) * 100 : 0;
+                  const grandTotal = Number(q.subtotalGtq) + laborGtq;
+                  const laborLabels: Record<string, string> = {
+                    economica: 'Vivienda económica',
+                    media: 'Vivienda media',
+                    ampliacion: 'Ampliación',
+                    obra_gris: 'Obra gris',
+                  };
+                  return (
+                    <div className="space-y-2 text-sm">
+                      <p className="font-semibold text-slate-700 text-xs uppercase tracking-wide">Materiales</p>
+                      <div className="flex justify-between text-slate-600">
+                        <span>Subtotal (IVA incl.)</span>
+                        <span className="font-medium">
+                          Q {Number(q.subtotalGtq).toLocaleString('es-GT', { minimumFractionDigits: 2 })}
+                        </span>
                       </div>
-                    );
-                  })()
-                ) : <p className="text-slate-500 text-sm">Sin cotizar</p>}
+                      {laborGtq > 0 && (
+                        <>
+                          <p className="font-semibold text-slate-700 text-xs uppercase tracking-wide pt-1">
+                            Mano de Obra · {laborLabels[q.laborProjectType ?? ''] ?? q.laborProjectType} ({laborPct.toFixed(0)}%)
+                          </p>
+                          <div className="flex justify-between text-slate-600">
+                            <span>Subtotal (IVA incl.)</span>
+                            <span className="font-medium">
+                              Q {laborGtq.toLocaleString('es-GT', { minimumFractionDigits: 2 })}
+                            </span>
+                          </div>
+                        </>
+                      )}
+                      <div className="flex justify-between font-bold text-slate-900 border-t pt-2 mt-1">
+                        <span>TOTAL GENERAL</span>
+                        <span>Q {grandTotal.toLocaleString('es-GT', { minimumFractionDigits: 2 })}</span>
+                      </div>
+                      {laborGtq === 0 && (
+                        <p className="text-xs text-amber-600 mt-1">
+                          Sin mano de obra en esta cotización
+                        </p>
+                      )}
+                    </div>
+                  );
+                })() : (
+                  <p className="text-sm text-slate-500">Sin cotizar</p>
+                )}
               </div>
             </div>
 
