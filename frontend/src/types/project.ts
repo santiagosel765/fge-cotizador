@@ -36,8 +36,8 @@ export interface Quotation {
   laborGtq?: number | null;
   laborPct?: number | null;
   laborProjectType?: string | null;
-  ivaIncluido: boolean;
-  status: 'draft' | 'finalized';
+  status: string;
+  createdAt: string;
   items?: QuotationItem[];
 }
 
