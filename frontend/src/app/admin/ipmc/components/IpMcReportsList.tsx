@@ -10,7 +10,7 @@ interface IpMcReportsListProps {
 }
 
 function formatDate(date: string): string {
-  return new Date(date).toLocaleString('es-BO', {
+  return new Date(date).toLocaleString('es-GT', {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -51,10 +51,15 @@ export function IpMcReportsList({
                   <div className="flex flex-wrap items-center gap-2">
                     <button
                       type="button"
-                      className="rounded border border-slate-300 px-3 py-1 text-sm"
-                      onClick={() => onSelectReport(report.id)}
+                      className="rounded border border-slate-300 px-3 py-1 text-sm transition-colors hover:bg-slate-50"
+                      onClick={() => {
+                        onSelectReport(report.id);
+                        setTimeout(() => {
+                          document.getElementById('ipmc-items-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }, 100);
+                      }}
                     >
-                      Ver
+                      👁 Ver items
                     </button>
                     <button
                       type="button"

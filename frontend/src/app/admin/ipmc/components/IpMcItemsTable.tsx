@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { IpMcItem } from '@/services/ipmc.service';
 
 interface IpMcItemsTableProps {
@@ -14,7 +14,7 @@ function formatNumber(value: number | string): string {
     return String(value);
   }
 
-  return new Intl.NumberFormat('es-BO', {
+  return new Intl.NumberFormat('es-GT', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 4,
   }).format(numeric);
@@ -37,7 +37,7 @@ export function IpMcItemsTable({ items, isLoading = false }: Readonly<IpMcItemsT
   }, [items, search]);
 
   return (
-    <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+    <section id="ipmc-items-section" className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
       <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <h2 className="text-lg font-semibold text-slate-900">Items del reporte ({filteredItems.length})</h2>
         <input
@@ -59,26 +59,51 @@ export function IpMcItemsTable({ items, isLoading = false }: Readonly<IpMcItemsT
         <div className="mt-4 overflow-auto">
           <table className="min-w-full border-collapse text-sm">
             <thead>
-              <tr className="border-b border-slate-200 text-left text-xs uppercase text-slate-500">
-                <th className="px-2 py-2">Código</th>
+              <tr className="border-b-2 border-slate-200 bg-slate-50 text-left text-xs uppercase text-slate-500">
+                <th className="w-16 px-2 py-2">Código</th>
                 <th className="px-2 py-2">Material</th>
-                <th className="px-2 py-2">Unidad</th>
-                <th className="px-2 py-2">Índice prev</th>
-                <th className="px-2 py-2">Índice actual</th>
-                <th className="px-2 py-2">Variación</th>
+                <th className="w-24 px-2 py-2">Unidad</th>
+                <th className="w-28 px-2 py-2 text-right">Índice Dic 2025</th>
+                <th className="w-28 px-2 py-2 text-right">Índice Ene 2026</th>
+                <th className="w-24 px-2 py-2 text-right">Var. %</th>
               </tr>
             </thead>
             <tbody>
-              {filteredItems.map((item) => (
-                <tr key={item.id} className="border-b border-slate-100 align-top">
-                  <td className="px-2 py-2 font-medium text-slate-800">{item.code}</td>
-                  <td className="px-2 py-2 text-slate-700">{item.material}</td>
-                  <td className="px-2 py-2 text-slate-700">{item.unit}</td>
-                  <td className="px-2 py-2 text-slate-700">{formatNumber(item.indexPrev)}</td>
-                  <td className="px-2 py-2 text-slate-700">{formatNumber(item.indexCurrent)}</td>
-                  <td className="px-2 py-2 text-slate-700">{formatNumber(item.variation)}</td>
-                </tr>
-              ))}
+              {filteredItems.map((item, index) => {
+                const prevItem = index > 0 ? filteredItems[index - 1] : null;
+                const showCategory = item.category && item.category !== prevItem?.category;
+
+                return (
+                  <Fragment key={item.id}>
+                    {showCategory ? (
+                      <tr>
+                        <td colSpan={6} className="border-b border-amber-200 bg-amber-50 px-2 py-2">
+                          <span className="text-xs font-bold uppercase tracking-wide text-amber-800">{item.category}</span>
+                        </td>
+                      </tr>
+                    ) : null}
+                    <tr className="border-b border-slate-100 hover:bg-slate-50">
+                      <td className="px-2 py-2 font-medium text-slate-800">{item.code}</td>
+                      <td className="px-2 py-2 text-slate-700">{item.material}</td>
+                      <td className="px-2 py-2 text-xs text-slate-500">{item.unit}</td>
+                      <td className="px-2 py-2 text-right text-slate-700">{formatNumber(item.indexPrev)}</td>
+                      <td className="px-2 py-2 text-right text-slate-700">{formatNumber(item.indexCurrent)}</td>
+                      <td
+                        className={`px-2 py-2 text-right text-xs font-medium ${
+                          Number(item.variation) > 0
+                            ? 'text-red-600'
+                            : Number(item.variation) < 0
+                              ? 'text-green-600'
+                              : 'text-slate-400'
+                        }`}
+                      >
+                        {Number(item.variation) > 0 ? '+' : ''}
+                        {formatNumber(item.variation)}%
+                      </td>
+                    </tr>
+                  </Fragment>
+                );
+              })}
             </tbody>
           </table>
         </div>

@@ -165,7 +165,14 @@ export class IpMcService {
     for (let i = 0; i < lines.length; i += 1) {
       const line = lines[i];
 
-      if (/^[A-Z]\.\s+/.test(line)) {
+      // Detecta: "A. ACERO", "B. ACCESORIOS", "10. CATEGORÍA",
+      // "I. CATEGORIA", líneas TODO MAYÚSCULAS sin números al inicio.
+      const isCategoryLine =
+        /^[A-Z]\.\s+[A-Z]/.test(line) ||
+        /^\d{1,2}\.\s+[A-Z]{3,}/.test(line) ||
+        (line.length < 80 && line === line.toUpperCase() && !/^\d+\s/.test(line) && line.length > 5);
+
+      if (isCategoryLine) {
         currentCategory = line;
         continue;
       }
@@ -177,7 +184,15 @@ export class IpMcService {
 
       while (cursor < lines.length) {
         const nextLine = lines[cursor];
-        if (/^[A-Z]\.\s+/.test(nextLine) || /^\d{1,4}\s+/.test(nextLine)) break;
+        const isNextCategoryLine =
+          /^[A-Z]\.\s+[A-Z]/.test(nextLine) ||
+          /^\d{1,2}\.\s+[A-Z]{3,}/.test(nextLine) ||
+          (nextLine.length < 80 &&
+            nextLine === nextLine.toUpperCase() &&
+            !/^\d+\s/.test(nextLine) &&
+            nextLine.length > 5);
+
+        if (isNextCategoryLine || /^\d{1,4}\s+/.test(nextLine)) break;
         candidate = `${candidate} ${nextLine}`;
         cursor += 1;
       }
