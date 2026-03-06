@@ -16,7 +16,7 @@ import { QuoteSummary } from '@/components/cotizacion/QuoteSummary';
 import { EstudioSueloSection } from '@/components/proyecto/EstudioSueloSection';
 import { LicenciamientoSection } from '@/components/proyecto/LicenciamientoSection';
 import { useAuth } from '@/lib/auth';
-import { ArrowLeft, LayoutDashboard, Download, User, Bot, FileText, Eye, Calculator, ClipboardList, MapPin } from 'lucide-react';
+import { ArrowLeft, LayoutDashboard, Download, User, Bot, FileText, Eye, Calculator, ClipboardList, MapPin, HardHat, Home, FolderOpen, Archive, Plus, PlusCircle } from 'lucide-react';
 
 interface CartItem {
   materialId: string;
@@ -88,7 +88,7 @@ function ProjectPageContent() {
   const [isCreditModalOpen, setIsCreditModalOpen] = useState(false);
   const [creditSubmission, setCreditSubmission] = useState<CreditRequestSubmission | null>(null);
   const [selectedLaborType, setSelectedLaborType] = useState('economica');
-  const [customLaborPercentage, setCustomLaborPercentage] = useState<string>('');
+  const [pendingCartRestore, setPendingCartRestore] = useState<Array<{ materialId: string; quantity: number; unitPriceGtq: number; note?: string }> | null>(null);
   const [activeTab, setActiveTab] = useState<
     'planificador' | 'planos' | 'visualizacion' | 'cotizacion' | 'tramites' | 'ubicacion'
   >('planificador');
@@ -144,6 +144,17 @@ function ProjectPageContent() {
       .then(([projectData, materialData]) => {
         setProject(projectData);
         setCategories(materialData);
+        if (projectData.quotations && projectData.quotations.length > 0) {
+          const lastQuotation = projectData.quotations[projectData.quotations.length - 1];
+
+          if (lastQuotation.items && lastQuotation.items.length > 0) {
+            setPendingCartRestore(lastQuotation.items);
+          }
+
+          if (lastQuotation.laborProjectType) {
+            setSelectedLaborType(lastQuotation.laborProjectType);
+          }
+        }
         setPlanner({
           projectType: projectData.name ?? '',
           dimensions: '',
@@ -157,18 +168,36 @@ function ProjectPageContent() {
 
   const allMaterials = useMemo(() => categories.flatMap(category => category.materials ?? []), [categories]);
 
+  useEffect(() => {
+    if (!pendingCartRestore || categories.length === 0) return;
+
+    const restoredCart: CartItem[] = pendingCartRestore
+      .map(item => {
+        const material = allMaterials.find(m => m.id === item.materialId);
+        if (!material) return null;
+        return {
+          materialId: item.materialId,
+          name: material.name,
+          unit: material.unit,
+          unitPriceGtq: Number(item.unitPriceGtq),
+          quantity: Number(item.quantity),
+        };
+      })
+      .filter(Boolean) as CartItem[];
+
+    if (restoredCart.length > 0) {
+      setCart(restoredCart);
+      setQuotationSaved(true);
+    }
+
+    setPendingCartRestore(null);
+  }, [pendingCartRestore, categories, allMaterials]);
+
   const subtotal = useMemo(() => cart.reduce((acc, item) => acc + Number(item.unitPriceGtq) * item.quantity, 0), [cart]);
   const iva = (subtotal * IVA_RATE) / (1 + IVA_RATE);
   const selectedLaborOption = LABOR_OPTIONS.find((option) => option.value === selectedLaborType);
   const selectedLaborPercentage = selectedLaborOption?.percentage ?? 35;
-  const customLaborPercentageValue = customLaborPercentage.trim() === '' ? undefined : Number(customLaborPercentage);
-  const hasValidCustomLaborPercentage = typeof customLaborPercentageValue === 'number'
-    && Number.isFinite(customLaborPercentageValue)
-    && customLaborPercentageValue >= 0
-    && customLaborPercentageValue <= 100;
-  const appliedLaborPercentage = hasValidCustomLaborPercentage
-    ? customLaborPercentageValue
-    : selectedLaborPercentage;
+  const appliedLaborPercentage = selectedLaborPercentage;
   const laborEstimate = subtotal * (appliedLaborPercentage / 100);
   const laborIva = (laborEstimate * IVA_RATE) / (1 + IVA_RATE);
   const grandTotal = subtotal + laborEstimate;
@@ -199,7 +228,7 @@ function ProjectPageContent() {
         // Si falla el patch, continuar
       }
 
-      setPlanStep('🧠 Analizando proyecto con IA... (puede tardar 30-60s)');
+      setPlanStep('Analizando proyecto con IA... (puede tardar 30-60s)');
 
       const result = await api.post<{
         detailedConcept: string;
@@ -207,7 +236,7 @@ function ProjectPageContent() {
         suggestedMaterials: Array<{ legacyCode: string; quantity: number; reason: string }>;
       }>('/ai/plan', { projectId: project.id });
 
-      setPlanStep('✅ Plan generado, cargando resultados...');
+      setPlanStep('Plan generado, cargando resultados...');
 
       setBlueprintSvg(result.blueprintSvg ?? '');
       setDetailedConcept(result.detailedConcept ?? '');
@@ -231,6 +260,17 @@ function ProjectPageContent() {
         if (newCartItems.length > 0) {
           setCart(newCartItems);
         }
+      }
+
+      const projectTypeLower = planner.projectType.toLowerCase();
+      if (projectTypeLower.includes('dos nivel') || projectTypeLower.includes('media')) {
+        setSelectedLaborType('media');
+      } else if (projectTypeLower.includes('ampliación') || projectTypeLower.includes('ampliacion')) {
+        setSelectedLaborType('ampliacion');
+      } else if (projectTypeLower.includes('gris') || projectTypeLower.includes('obra gris')) {
+        setSelectedLaborType('obra_gris');
+      } else {
+        setSelectedLaborType('economica');
       }
 
       const updated = await api.get<Project>(`/projects/${project.id}`);
@@ -267,7 +307,7 @@ function ProjectPageContent() {
         })),
         laborConfig: {
           projectType: selectedLaborType,
-          customPercentage: hasValidCustomLaborPercentage ? customLaborPercentageValue : undefined,
+          customPercentage: undefined,
         },
       });
       setQuotationSaved(true);
@@ -544,7 +584,7 @@ function ProjectPageContent() {
         <section className="bg-white rounded-xl shadow-lg overflow-hidden">
           {/* Header de sección */}
           <div className="bg-gradient-to-r from-blue-700 to-blue-900 text-white px-6 py-5">
-            <h2 className="text-xl font-extrabold">🏗️ Planificador IA</h2>
+            <h2 className="text-xl font-extrabold flex items-center gap-2"><Bot size={20} /> Planificador IA</h2>
             <p className="text-blue-200 text-sm mt-1">
               Ajusta los detalles de tu proyecto y genera un plan completo con IA.
             </p>
@@ -617,7 +657,7 @@ function ProjectPageContent() {
               {/* Columna derecha: Asistente interactivo */}
               <aside className="bg-slate-50 border border-slate-200 rounded-xl p-5 space-y-4 h-fit">
                 <div>
-                  <h3 className="text-lg font-bold text-slate-800">🏗️ Asistente de Diseño</h3>
+                  <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2"><Bot size={17} /> Asistente de Diseño</h3>
                   <p className="text-xs text-slate-500 mt-0.5">Responde para refinar tu proyecto.</p>
                 </div>
 
@@ -631,15 +671,13 @@ function ProjectPageContent() {
                         type="button"
                         onClick={() => handlePlannerAnswer(PLANNER_QUESTIONS[assistantStep].yesAction)}
                         className="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-2.5 px-3 rounded-lg text-sm transition-colors"
-                      >
-                        ✓ Sí
+                      ><span className="inline-flex items-center gap-1.5"><Plus size={15} /> Sí</span>
                       </button>
                       <button
                         type="button"
                         onClick={() => handlePlannerAnswer(PLANNER_QUESTIONS[assistantStep].noAction)}
                         className="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-2.5 px-3 rounded-lg text-sm transition-colors"
-                      >
-                        ✗ No
+                      ><span className="inline-flex items-center gap-1.5"><Archive size={15} /> No</span>
                       </button>
                     </div>
                     <p className="text-xs text-slate-400 text-center">
@@ -649,7 +687,7 @@ function ProjectPageContent() {
                 ) : blueprintSvg ? (
                   <div className="space-y-3">
                     <div className="text-center">
-                      <span className="text-2xl">✅</span>
+                      <PlusCircle size={28} className="text-green-500 mx-auto" />
                       <p className="text-sm text-green-700 font-semibold mt-1">
                         ¡Plano arquitectónico listo!
                       </p>
@@ -659,18 +697,16 @@ function ProjectPageContent() {
                     </p>
                     <div className="space-y-1.5">
                       {[
-                        { icon: '📏', label: 'Plano Acotado' },
-                        { icon: '⚡', label: 'Eléctrico' },
-                        { icon: '🔌', label: 'Fuerza 220V' },
-                        { icon: '💧', label: 'Hidráulico' },
-                        { icon: '🚰', label: 'Drenajes' },
-                        { icon: '🏗️', label: 'Cimentaciones' },
+                        { Icon: FileText, label: 'Plano Acotado' },
+                        { Icon: Eye, label: 'Eléctrico' },
+                        { Icon: Calculator, label: 'Fuerza 220V' },
+                        { Icon: MapPin, label: 'Hidráulico' },
+                        { Icon: ClipboardList, label: 'Drenajes' },
+                        { Icon: HardHat, label: 'Cimentaciones' },
                       ].map(p => (
-                        <div
-                          key={p.label}
-                          className="flex items-center gap-2 text-xs text-slate-600 bg-white rounded-lg px-3 py-1.5 border border-slate-200"
-                        >
-                          <span>{p.icon}</span>
+                        <div key={p.label}
+                          className="flex items-center gap-2 text-xs text-slate-600 bg-white rounded-lg px-3 py-1.5 border border-slate-200">
+                          <p.Icon size={13} className="text-slate-400" />
                           <span>{p.label}</span>
                         </div>
                       ))}
@@ -681,7 +717,7 @@ function ProjectPageContent() {
                   </div>
                 ) : (
                   <div className="text-center space-y-3 py-2">
-                    <span className="text-3xl">✅</span>
+                    <PlusCircle size={32} className="text-green-500 mx-auto" />
                     <p className="text-sm text-green-700 font-semibold">¡Proyecto definido!</p>
                     <p className="text-xs text-slate-500">
                       Ajusta los campos y genera el plan.
@@ -704,7 +740,16 @@ function ProjectPageContent() {
               className="mt-6 w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 
              text-white font-extrabold py-4 rounded-xl text-lg transition-colors shadow-lg"
             >
-              {planLoading ? '⏳ Generando plan con IA...' : '✨ Generar Plan con IA'}
+              {planLoading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <Bot size={18} className="animate-spin" />
+                  Generando plan con IA...
+                </span>
+              ) : (
+                <span className="flex items-center justify-center gap-2">
+                  <Bot size={18} /> Generar Plan con IA
+                </span>
+              )}
             </button>
             {planStep && (
               <div className="mt-3 flex items-center gap-2 bg-blue-50 border border-blue-200 
@@ -719,7 +764,7 @@ function ProjectPageContent() {
             {planError && (
               <p className="text-red-600 text-sm mt-2 bg-red-50 border border-red-200 
                 rounded-lg px-3 py-2">
-                ⚠️ {planError}
+                <span className="flex items-center gap-2"><Archive size={15} /> {planError}</span>
               </p>
             )}
           </div>
@@ -731,10 +776,10 @@ function ProjectPageContent() {
             <div className="space-y-6">
         <section id="section-blueprint" className="bg-white p-6 rounded-xl shadow-lg">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-2xl font-bold">📐 Plano Arquitectónico 2D</h2>
+            <h2 className="text-2xl font-bold flex items-center gap-2"><FileText size={22} /> Plano Arquitectónico 2D</h2>
             {(blueprintSvg || project.aiAssets?.find(a => a.assetType === 'blueprint')) && (
-              <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium">
-                ✓ Generado
+              <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium inline-flex items-center gap-1">
+                <PlusCircle size={12} /> Generado
               </span>
             )}
           </div>
@@ -762,7 +807,7 @@ function ProjectPageContent() {
           ) : (
             <div className="flex flex-col items-center justify-center h-48 bg-slate-100 
                     rounded-lg border-2 border-dashed border-slate-300">
-              <span className="text-4xl mb-2">📐</span>
+              <FileText size={40} className="text-slate-300 mb-2" />
               <p className="text-slate-500 text-sm font-medium">
                 Genera tu proyecto con IA para ver el plano
               </p>
@@ -774,7 +819,7 @@ function ProjectPageContent() {
 
           {detailedConcept && (
             <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h4 className="font-semibold text-blue-800 mb-2">📋 Concepto del Proyecto</h4>
+              <h4 className="font-semibold text-blue-800 mb-2 flex items-center gap-2"><FolderOpen size={15} /> Concepto del Proyecto</h4>
               <p className="text-sm text-slate-700 whitespace-pre-line leading-relaxed">
                 {detailedConcept}
               </p>
@@ -783,7 +828,7 @@ function ProjectPageContent() {
         </section>
         <section className="bg-white rounded-xl shadow-lg overflow-hidden">
           <div className="bg-gradient-to-r from-slate-700 to-slate-900 text-white px-6 py-5">
-            <h2 className="text-xl font-extrabold">🗂️ Planos Técnicos</h2>
+            <h2 className="text-xl font-extrabold flex items-center gap-2"><FolderOpen size={20} /> Planos Técnicos</h2>
             <p className="text-slate-300 text-sm mt-1">
               7 planos técnicos generados con IA — según normativa guatemalteca
             </p>
@@ -810,7 +855,7 @@ function ProjectPageContent() {
             <div className="space-y-6">
         <section className="bg-white p-6 rounded-xl shadow-lg">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-2xl font-bold">🖼️ Render Fotorrealista</h2>
+            <h2 className="text-2xl font-bold flex items-center gap-2"><Eye size={22} /> Render Fotorrealista</h2>
             {!renderUrl && project.renderPrompt && (
               <button
                 onClick={handleGenerateRender}
@@ -818,7 +863,15 @@ function ProjectPageContent() {
                 className="bg-purple-600 hover:bg-purple-700 disabled:bg-purple-300 
                    text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors"
               >
-                {renderLoading ? '⏳ Generando...' : '✨ Generar Render'}
+                {renderLoading ? (
+                  <span className="flex items-center gap-2">
+                    <Bot size={15} className="animate-spin" /> Generando...
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    <Eye size={15} /> Generar Render
+                  </span>
+                )}
               </button>
             )}
           </div>
@@ -829,7 +882,7 @@ function ProjectPageContent() {
         </section>
         <section className="bg-white p-6 rounded-xl shadow-lg">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-2xl font-bold">🌐 Tour Virtual 360°</h2>
+            <h2 className="text-2xl font-bold flex items-center gap-2"><MapPin size={22} /> Tour Virtual 360°</h2>
             {!panoUrl && project.panoPrompt && (
               <button
                 onClick={handleGeneratePanorama}
@@ -837,7 +890,15 @@ function ProjectPageContent() {
                 className="bg-teal-600 hover:bg-teal-700 disabled:bg-teal-300 
                    text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors"
               >
-                {panoLoading ? '⏳ Generando...' : '✨ Generar Tour 360°'}
+                {panoLoading ? (
+                  <span className="flex items-center gap-2">
+                    <Bot size={15} className="animate-spin" /> Generando...
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    <MapPin size={15} /> Generar Tour 360°
+                  </span>
+                )}
               </button>
             )}
           </div>
@@ -857,7 +918,9 @@ function ProjectPageContent() {
             {suggestedMaterials.length > 0 && (
               <div className="mx-6 mb-4 bg-green-50 border border-green-200 rounded-lg p-3">
                 <p className="text-sm font-semibold text-green-800 mb-2">
-                  💡 Materiales sugeridos por IA:
+                  <span className="flex items-center gap-2">
+                    <Bot size={15} /> Materiales sugeridos por IA:
+                  </span>
                 </p>
                 <div className="space-y-1">
                   {suggestedMaterials.slice(0, 5).map((s, i) => (
@@ -891,7 +954,7 @@ function ProjectPageContent() {
                       <td className="px-6 py-4 text-center">{item.quantity}</td>
                       <td className="px-6 py-4 text-right font-semibold">Q{(Number(item.unitPriceGtq) * item.quantity).toFixed(2)}</td>
                       <td className="px-6 py-4 text-center">
-                        <button onClick={() => removeMaterial(item.materialId)} className="text-red-500 hover:text-red-700">🗑️</button>
+                        <button onClick={() => removeMaterial(item.materialId)} className="text-red-500 hover:text-red-700"><Archive size={15} /></button>
                       </td>
                     </tr>
                   ))}
@@ -903,44 +966,6 @@ function ProjectPageContent() {
                 </tbody>
               </table>
             </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-xl shadow-lg">
-            <h2 className="text-2xl font-bold mb-4">👷 Estimado de Mano de Obra</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <label className="text-sm text-slate-600">
-                <span className="block mb-2 font-medium text-slate-700">Tipo de proyecto para mano de obra</span>
-                <select
-                  value={selectedLaborType}
-                  onChange={(e) => setSelectedLaborType(e.target.value)}
-                  className="w-full p-3 bg-slate-50 border rounded-lg"
-                >
-                  {LABOR_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label} ({option.percentage}%)
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="text-sm text-slate-600">
-                <span className="block mb-2 font-medium text-slate-700">% personalizado (opcional)</span>
-                <input
-                  type="number"
-                  min={0}
-                  max={100}
-                  value={customLaborPercentage}
-                  onChange={(e) => setCustomLaborPercentage(e.target.value)}
-                  className="w-full p-3 bg-slate-50 border rounded-lg"
-                  placeholder="Ej. 35"
-                />
-              </label>
-            </div>
-            {!hasValidCustomLaborPercentage && customLaborPercentage.trim() !== '' && (
-              <p className="mt-2 text-xs text-amber-600">Ingresa un porcentaje entre 0 y 100 para aplicar el override.</p>
-            )}
-            <p className="mt-4 text-sm text-slate-700">
-              Estimado: <span className="font-semibold">Q{laborEstimate.toFixed(2)}</span> (IVA incluido)
-            </p>
           </div>
 
           <div className="bg-white p-6 rounded-xl shadow-lg">
@@ -968,13 +993,43 @@ function ProjectPageContent() {
               laborProjectType={selectedLaborType}
               grandIva={grandIva}
               total={grandTotal}
-            />
+                        />
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 mt-4">
+              <div className="flex items-center gap-2 mb-2">
+                <HardHat size={16} className="text-slate-500" />
+                <span className="text-sm font-semibold text-slate-700">
+                  Mano de Obra aplicada automáticamente
+                </span>
+              </div>
+              <p className="text-xs text-slate-500">
+                Tipo: {LABOR_OPTIONS.find(o => o.value === selectedLaborType)?.label}
+                {' · '}
+                {LABOR_OPTIONS.find(o => o.value === selectedLaborType)?.percentage}%
+                del subtotal de materiales
+              </p>
+              <p className="text-xs text-slate-400 mt-1">
+                Para cambiar el tipo de mano de obra,
+                ajusta el tipo de proyecto en el tab Planificador.
+              </p>
+            </div>
             <button
               onClick={handleSaveQuotation}
               disabled={quotationSaving || cart.length === 0}
               className="w-full mt-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-bold py-3 rounded-lg transition-colors"
             >
-              {quotationSaving ? '⏳ Guardando...' : quotationSaved ? '✅ Cotización guardada' : '💾 Guardar Cotización'}
+              {quotationSaving ? (
+                <span className="flex items-center justify-center gap-2">
+                  <Bot size={16} className="animate-spin" /> Guardando...
+                </span>
+              ) : quotationSaved ? (
+                <span className="flex items-center justify-center gap-2">
+                  <PlusCircle size={16} /> Cotización guardada
+                </span>
+              ) : (
+                <span className="flex items-center justify-center gap-2">
+                  <Download size={16} /> Guardar Cotización
+                </span>
+              )}
             </button>
             {quotationError && (
               <p className="text-red-600 text-sm mt-1">{quotationError}</p>
@@ -1009,7 +1064,7 @@ function ProjectPageContent() {
             <h3 className="text-xl font-bold text-slate-800">¿Necesitas Financiamiento?</h3>
             {creditSubmission ? (
               <div className="mt-4 w-full rounded-lg border border-green-200 bg-green-50 p-4 text-left">
-                <p className="text-sm font-semibold text-green-700">✅ Solicitud enviada</p>
+                <p className="flex items-center gap-2 text-sm font-semibold text-green-700"><PlusCircle size={15} /> Solicitud enviada</p>
                 <p className="mt-1 text-sm text-slate-700">
                   Ticket: <span className="font-bold">{creditSubmission.ticketNumber}</span>
                 </p>
@@ -1035,7 +1090,7 @@ function ProjectPageContent() {
           </div>
           <div className="bg-white p-6 rounded-xl shadow-lg flex flex-col items-center text-center">
             <h3 className="text-xl font-bold text-slate-800">¿Quieres Empezar de Nuevo?</h3>
-            <button onClick={() => setCart([])} className="mt-4 w-full bg-red-500 text-white font-bold py-3 rounded-lg hover:bg-red-600">Limpiar Cotización</button>
+            <button onClick={() => setCart([])} className="mt-4 w-full flex items-center justify-center gap-2 bg-red-500 text-white font-bold py-3 rounded-lg hover:bg-red-600 transition-colors"><Archive size={16} /> Limpiar Cotización</button>
           </div>
         </section>
             </div>

@@ -42,7 +42,7 @@ export class ProjectsService {
   async findOne(id: string): Promise<Project> {
     const project = await this.projectsRepo.findOne({
       where: { id },
-      relations: ['quotations', 'aiAssets', 'aiConversations'],
+      relations: ['aiAssets', 'quotations', 'quotations.items', 'aiConversations'],
     });
     if (!project) throw new NotFoundException(`Proyecto ${id} no encontrado`);
     return project;
