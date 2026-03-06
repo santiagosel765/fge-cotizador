@@ -5,7 +5,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/lib/auth';
 import { ProjectStatus } from '@/types/project.types';
 import { ProjectRecord, projectsService } from '@/services/projects.service';
-import { Archive, ExternalLink, Eye, Plus, PlusCircle } from 'lucide-react';
+import {
+  Archive, ExternalLink, Eye,
+  LayoutDashboard, Calculator, FileText, MapPin,
+  UserCircle, Bot, PlusCircle, Plus,
+} from 'lucide-react';
 
 const statusOptions: Array<{ value: 'all' | ProjectStatus; label: string }> = [
   { value: 'all', label: 'Todos' },
@@ -18,15 +22,6 @@ const statusOptions: Array<{ value: 'all' | ProjectStatus; label: string }> = [
 
 const technicalAssetTypes = ['blueprint', 'acotado', 'electrico', 'fuerza', 'hidraulico', 'drenajes', 'cimentaciones'];
 
-const detailedBlueprints: Array<{ label: string; keys: string[] }> = [
-  { label: 'Arquitectónico', keys: ['blueprint', 'arquitectonico'] },
-  { label: 'Acotado', keys: ['acotado', 'plano_acotado'] },
-  { label: 'Eléctrico', keys: ['electrico', 'plano_electrico'] },
-  { label: 'Fuerza', keys: ['fuerza', 'plano_fuerza'] },
-  { label: 'Hidráulico', keys: ['hidraulico', 'plano_hidraulico'] },
-  { label: 'Drenajes', keys: ['drenajes', 'plano_drenajes'] },
-  { label: 'Cimentaciones', keys: ['cimentaciones', 'plano_cimentaciones'] },
-];
 
 function badgeClass(status: ProjectStatus): string {
   if (status === 'planned') return 'bg-blue-100 text-blue-700';
@@ -79,6 +74,9 @@ export default function AdminProjectsPage(): JSX.Element {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedProject, setSelectedProject] = useState<ProjectRecord | null>(null);
+  const [modalTab, setModalTab] = useState<
+    'resumen' | 'cotizacion' | 'planos' | 'ubicacion'
+  >('resumen');
 
   async function loadProjects(): Promise<void> {
     if (!token) return;
@@ -131,6 +129,7 @@ export default function AdminProjectsPage(): JSX.Element {
     try {
       const project = await projectsService.getProject(projectId, token);
       setSelectedProject(project);
+      setModalTab('resumen');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo cargar el detalle del proyecto');
     }
@@ -241,156 +240,260 @@ export default function AdminProjectsPage(): JSX.Element {
       </section>
 
       {selectedProject ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-xl bg-white p-5">
-            <div className="mb-4 flex items-start justify-between gap-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="max-h-[92vh] w-full max-w-3xl flex flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
+            {/* Header del modal */}
+            <div className="flex items-start justify-between gap-3 bg-slate-900 text-white px-5 py-4 flex-shrink-0">
               <div>
-                <h2 className="text-2xl font-bold text-slate-900">{selectedProject.name}</h2>
-                <p className="mt-1 text-sm text-slate-600">{selectedProject.userDescription}</p>
+                <h2 className="text-xl font-bold">{selectedProject.name}</h2>
+                <p className="text-sm text-slate-400 mt-0.5">{selectedProject.userDescription}</p>
               </div>
-              <button type="button" className="rounded border px-2 py-1" onClick={() => { setSelectedProject(null); }}>Cerrar</button>
+              <button
+                type="button"
+                className="text-slate-400 hover:text-white transition-colors flex-shrink-0 mt-0.5"
+                onClick={() => setSelectedProject(null)}
+              >
+                <Plus size={20} className="rotate-45" />
+              </button>
             </div>
 
-            <div className="space-y-3 text-sm">
-              <div className="rounded-lg border p-3">
-                <p className="font-semibold text-slate-800">Estado actual</p>
-                <select
-                  className="mt-2 rounded border border-slate-300 px-3 py-2"
-                  value={selectedProject.status}
-                  onChange={(event) => { void handleStatusChange(selectedProject.id, event.target.value as ProjectStatus); }}
+            {/* Tabs del modal */}
+            <div className="flex border-b bg-white flex-shrink-0">
+              {[
+                { id: 'resumen', label: 'Resumen', Icon: LayoutDashboard },
+                { id: 'cotizacion', label: 'Cotización', Icon: Calculator },
+                { id: 'planos', label: 'Planos', Icon: FileText },
+                { id: 'ubicacion', label: 'Ubicación', Icon: MapPin },
+              ].map(({ id, label, Icon }) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setModalTab(id as typeof modalTab)}
+                  className={`flex items-center gap-1.5 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${modalTab === id ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
                 >
-                  {statusOptions.filter((item) => item.value !== 'all').map((item) => (
-                    <option key={item.value} value={item.value}>{item.label}</option>
-                  ))}
-                </select>
-              </div>
+                  <Icon size={14} />
+                  {label}
+                </button>
+              ))}
+            </div>
 
-              <div className="rounded-lg border p-3">
-                <p className="font-semibold text-slate-800 mb-2">Cliente</p>
-                <div className="space-y-1 text-sm text-slate-600">
-                  <p>
-                    <span className="font-medium">Nombre:</span>{' '}
-                    {selectedProject.user?.fullName ?? 'No disponible'}
-                  </p>
-                  <p>
-                    <span className="font-medium">Email:</span>{' '}
-                    {selectedProject.user?.email ?? 'No disponible'}
-                  </p>
-                  <p>
-                    <span className="font-medium">Teléfono:</span>{' '}
-                    {selectedProject.user?.phone ?? 'No registrado'}
-                  </p>
-                  <p>
-                    <span className="font-medium">Rol:</span>{' '}
-                    {selectedProject.user?.role ?? 'client'}
-                  </p>
+            {/* Contenido scrollable */}
+            <div className="overflow-y-auto flex-1 p-5">
+              {modalTab === 'resumen' && (
+                <div className="space-y-4">
+                  <div className="rounded-lg border p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Estado del proyecto</p>
+                    <div className="flex items-center gap-3">
+                      <span className={`rounded-full px-3 py-1 text-xs font-semibold capitalize ${badgeClass(selectedProject.status)}`}>
+                        {formatStatus(selectedProject.status)}
+                      </span>
+                      <select
+                        className="rounded border border-slate-300 px-2 py-1 text-sm focus:ring-1 focus:ring-blue-500"
+                        value={selectedProject.status}
+                        onChange={(e) => {
+                          void handleStatusChange(selectedProject.id, e.target.value as ProjectStatus);
+                        }}
+                      >
+                        {statusOptions.filter((item) => item.value !== 'all').map((item) => (
+                          <option key={item.value} value={item.value}>{item.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-3">
+                      <span className="flex items-center gap-1.5">
+                        <UserCircle size={14} /> Cliente
+                      </span>
+                    </p>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      {[
+                        ['Nombre', selectedProject.user?.fullName ?? 'No disponible'],
+                        ['Email', selectedProject.user?.email ?? 'No disponible'],
+                        ['Teléfono', selectedProject.user?.phone ?? 'No registrado'],
+                        ['Rol', selectedProject.user?.role ?? 'client'],
+                      ].map(([label, value]) => (
+                        <div key={label}>
+                          <p className="text-xs text-slate-400">{label}</p>
+                          <p className="font-medium text-slate-800">{value}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {(selectedProject as ProjectRecord & {
+                    plannerProjectType?: string;
+                    plannerDimensions?: string;
+                    plannerMainSpaces?: string;
+                    plannerKeyMaterials?: string;
+                  }).plannerProjectType && (
+                    <div className="rounded-lg border p-4">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-3">
+                        <span className="flex items-center gap-1.5">
+                          <Bot size={14} /> Datos del planificador IA
+                        </span>
+                      </p>
+                      <div className="grid grid-cols-1 gap-2 text-sm">
+                        {[
+                          ['Tipo de proyecto', (selectedProject as ProjectRecord & { plannerProjectType?: string }).plannerProjectType],
+                          ['Dimensiones', (selectedProject as ProjectRecord & { plannerDimensions?: string }).plannerDimensions || 'No especificadas'],
+                          ['Espacios principales', (selectedProject as ProjectRecord & { plannerMainSpaces?: string }).plannerMainSpaces || 'No especificados'],
+                          ['Materiales preferidos', (selectedProject as ProjectRecord & { plannerKeyMaterials?: string }).plannerKeyMaterials || 'No especificados'],
+                        ].map(([label, value]) => value && (
+                          <div key={label} className="flex gap-2 py-1 border-b border-slate-100">
+                            <span className="text-slate-400 w-36 flex-shrink-0">{label}</span>
+                            <span className="text-slate-800">{value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="rounded-lg border p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Fechas</p>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div>
+                        <p className="text-xs text-slate-400">Creado</p>
+                        <p className="font-medium">{new Date(selectedProject.createdAt).toLocaleDateString('es-GT')}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-400">Actualizado</p>
+                        <p className="font-medium">{new Date(selectedProject.updatedAt ?? selectedProject.createdAt).toLocaleDateString('es-GT')}</p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
 
-              <div className="rounded-lg border p-3">
-                <p className="font-semibold text-slate-800">Ubicación</p>
-                <p>{selectedProject.addressText ?? 'Sin ubicación'}</p>
-                {(selectedProject.latitude !== null && selectedProject.latitude !== undefined && selectedProject.longitude !== null && selectedProject.longitude !== undefined) ? (
-                  <p className="text-slate-600">Lat: {selectedProject.latitude}, Lng: {selectedProject.longitude}</p>
-                ) : null}
-              </div>
+              {modalTab === 'cotizacion' && (
+                <div className="space-y-4">
+                  {(selectedProject.quotations?.length ?? 0) === 0 ? (
+                    <div className="text-center py-10 text-slate-400">
+                      <Calculator size={32} className="mx-auto mb-2 opacity-30" />
+                      <p>Sin cotización registrada</p>
+                    </div>
+                  ) : (() => {
+                    const q = selectedProject.quotations![selectedProject.quotations!.length - 1]!;
+                    const laborGtq = Number(q.laborGtq ?? 0);
+                    const laborPct = q.laborPct ? Number(q.laborPct) * 100 : 0;
+                    const grandTotal = Number(q.subtotalGtq) + laborGtq;
+                    const laborLabels: Record<string, string> = {
+                      economica: 'Vivienda economica',
+                      media: 'Vivienda media',
+                      ampliacion: 'Ampliacion',
+                      obra_gris: 'Obra gris',
+                    };
 
-              <div className="rounded-lg border p-3">
-                <p className="font-semibold text-slate-800">Planos generados</p>
-                <ul className="mt-2 grid grid-cols-1 gap-1 md:grid-cols-2">
-                  {detailedBlueprints.map((item) => {
-                    const hasAsset = (selectedProject.aiAssets ?? []).some((asset) => item.keys.includes(asset.assetType?.toLowerCase()));
-                    return <li key={item.label} className="flex items-center gap-1.5">{hasAsset ? <Plus size={13} className="text-green-600" /> : <PlusCircle size={13} className="text-slate-300" />} {item.label}</li>;
-                  })}
-                </ul>
-              </div>
+                    return (
+                      <div className="space-y-4">
+                        <div className="rounded-lg border p-4">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-3">Resumen financiero</p>
+                          <div className="space-y-2 text-sm">
+                            <div className="flex justify-between text-slate-600">
+                              <span>Subtotal materiales (IVA incl.)</span>
+                              <span className="font-medium">Q {Number(q.subtotalGtq).toLocaleString('es-GT', { minimumFractionDigits: 2 })}</span>
+                            </div>
+                            {laborGtq > 0 && (
+                              <div className="flex justify-between text-slate-600">
+                                <span>Mano de obra — {laborLabels[q.laborProjectType ?? ''] ?? q.laborProjectType} ({laborPct.toFixed(0)}%)</span>
+                                <span className="font-medium">Q {laborGtq.toLocaleString('es-GT', { minimumFractionDigits: 2 })}</span>
+                              </div>
+                            )}
+                            <div className="flex justify-between font-bold text-slate-900 border-t pt-2">
+                              <span>TOTAL GENERAL</span>
+                              <span>Q {grandTotal.toLocaleString('es-GT', { minimumFractionDigits: 2 })}</span>
+                            </div>
+                          </div>
+                        </div>
 
-              <div className="rounded-lg border p-3">
-                <p className="font-semibold text-slate-800">Resumen de cotización</p>
-                {(selectedProject.quotations?.length ?? 0) > 0 ? (() => {
-                  const q = selectedProject.quotations![selectedProject.quotations!.length - 1]!;
-                  const laborGtq = Number(q.laborGtq ?? 0);
-                  const laborPct = q.laborPct ? Number(q.laborPct) * 100 : 0;
-                  const grandTotal = Number(q.subtotalGtq) + laborGtq;
-                  const laborLabels: Record<string, string> = {
-                    economica: 'Vivienda económica',
-                    media: 'Vivienda media',
-                    ampliacion: 'Ampliación',
-                    obra_gris: 'Obra gris',
-                  };
-                  return (
-                    <div className="space-y-2 text-sm">
-                      <p className="font-semibold text-slate-700 text-xs uppercase tracking-wide">Materiales</p>
-                      <div className="flex justify-between text-slate-600">
-                        <span>Subtotal (IVA incl.)</span>
-                        <span className="font-medium">
-                          Q {Number(q.subtotalGtq).toLocaleString('es-GT', { minimumFractionDigits: 2 })}
+                        {(q.items?.length ?? 0) > 0 && (
+                          <div className="rounded-lg border p-4">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-3">Materiales ({q.items!.length} items)</p>
+                            <div className="space-y-1 max-h-64 overflow-y-auto">
+                              {q.items!.map((item) => (
+                                <div key={item.id} className="flex justify-between items-center text-xs py-1.5 border-b border-slate-100">
+                                  <span className="text-slate-700 flex-1 mr-2">{item.material?.name ?? 'Material'}</span>
+                                  <span className="text-slate-400 mr-3 w-16 text-right">{Number(item.quantity)} {item.material?.unit}</span>
+                                  <span className="font-medium text-slate-800 w-24 text-right">Q {Number(item.subtotalGtq).toLocaleString('es-GT', { minimumFractionDigits: 2 })}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        <p className="text-xs text-slate-400 text-right">Versión {q.versionNumber} · Guardada el {new Date(q.createdAt ?? selectedProject.createdAt).toLocaleDateString('es-GT')}</p>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+
+              {modalTab === 'planos' && (
+                <div className="space-y-3">
+                  {[
+                    { label: 'Arquitectónico', keys: ['blueprint', 'arquitectonico'] },
+                    { label: 'Acotado', keys: ['acotado'] },
+                    { label: 'Eléctrico', keys: ['electrico'] },
+                    { label: 'Fuerza 220V', keys: ['fuerza'] },
+                    { label: 'Hidráulico', keys: ['hidraulico'] },
+                    { label: 'Drenajes', keys: ['drenajes'] },
+                    { label: 'Cimentaciones', keys: ['cimentaciones'] },
+                  ].map((item) => {
+                    const hasAsset = (selectedProject.aiAssets ?? []).some((a) => item.keys.includes(a.assetType?.toLowerCase() ?? ''));
+                    return (
+                      <div key={item.label} className={`flex items-center justify-between rounded-lg border p-3 ${hasAsset ? 'border-green-200 bg-green-50' : 'border-slate-200 bg-slate-50'}`}>
+                        <div className="flex items-center gap-2">
+                          {hasAsset
+                            ? <PlusCircle size={16} className="text-green-600" />
+                            : <Plus size={16} className="text-slate-300" />}
+                          <span className={`text-sm font-medium ${hasAsset ? 'text-green-800' : 'text-slate-500'}`}>{item.label}</span>
+                        </div>
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${hasAsset ? 'bg-green-100 text-green-700' : 'bg-slate-200 text-slate-500'}`}>
+                          {hasAsset ? 'Generado' : 'Pendiente'}
                         </span>
                       </div>
-                      {laborGtq > 0 && (
-                        <>
-                          <p className="font-semibold text-slate-700 text-xs uppercase tracking-wide pt-1">
-                            Mano de Obra · {laborLabels[q.laborProjectType ?? ''] ?? q.laborProjectType} ({laborPct.toFixed(0)}%)
-                          </p>
-                          <div className="flex justify-between text-slate-600">
-                            <span>Subtotal (IVA incl.)</span>
-                            <span className="font-medium">
-                              Q {laborGtq.toLocaleString('es-GT', { minimumFractionDigits: 2 })}
-                            </span>
+                    );
+                  })}
+                </div>
+              )}
+
+              {modalTab === 'ubicacion' && (
+                <div className="space-y-4">
+                  {selectedProject.addressText ? (
+                    <div className="rounded-lg border p-4 space-y-2 text-sm">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Dirección registrada</p>
+                      <p className="text-slate-800 font-medium">{selectedProject.addressText}</p>
+                      {selectedProject.latitude && (
+                        <div className="grid grid-cols-2 gap-2 text-slate-600">
+                          <div>
+                            <p className="text-xs text-slate-400">Latitud</p>
+                            <p>{selectedProject.latitude}</p>
                           </div>
-                        </>
-                      )}
-                      <div className="flex justify-between font-bold text-slate-900 border-t pt-2 mt-1">
-                        <span>TOTAL GENERAL</span>
-                        <span>Q {grandTotal.toLocaleString('es-GT', { minimumFractionDigits: 2 })}</span>
-                      </div>
-                      {(q.items?.length ?? 0) > 0 && (
-                        <>
-                          <p className="font-semibold text-slate-700 text-xs uppercase tracking-wide pt-2 mt-2 border-t">
-                            Detalle de materiales ({q.items!.length})
-                          </p>
-                          <div className="max-h-40 overflow-y-auto mt-1 space-y-1">
-                            {q.items!.map((item) => (
-                              <div
-                                key={item.id}
-                                className="flex justify-between text-xs text-slate-600 py-1 border-b border-slate-100"
-                              >
-                                <span className="flex-1 mr-2">
-                                  {item.material?.name ?? 'Material'}
-                                </span>
-                                <span className="text-slate-400 mr-3">
-                                  {Number(item.quantity)} {item.material?.unit ?? ''}
-                                </span>
-                                <span className="font-medium">
-                                  Q {Number(item.subtotalGtq).toLocaleString('es-GT', { minimumFractionDigits: 2 })}
-                                </span>
-                              </div>
-                            ))}
+                          <div>
+                            <p className="text-xs text-slate-400">Longitud</p>
+                            <p>{selectedProject.longitude}</p>
                           </div>
-                        </>
-                      )}
-                      {laborGtq === 0 && (
-                        <p className="text-xs text-amber-600 mt-1">
-                          Sin mano de obra en esta cotización
-                        </p>
+                        </div>
                       )}
                     </div>
-                  );
-                })() : (
-                  <p className="text-sm text-slate-500">Sin cotizar</p>
-                )}
-              </div>
+                  ) : (
+                    <div className="text-center py-10 text-slate-400">
+                      <MapPin size={32} className="mx-auto mb-2 opacity-30" />
+                      <p>Sin ubicación registrada</p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
-            <div className="mt-3">
+            <div className="border-t p-4 flex-shrink-0 bg-white">
               <Link
                 href={`/projects/${selectedProject.id}`}
-                className="flex items-center justify-center gap-2 w-full
-        bg-blue-600 hover:bg-blue-700 text-white font-semibold
-        py-2.5 px-4 rounded-lg transition-colors text-sm"
+                className="flex items-center justify-center gap-2 w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-4 rounded-lg transition-colors text-sm"
               >
                 <ExternalLink size={15} />
-                Abrir y editar proyecto
+                Abrir y editar proyecto completo
               </Link>
             </div>
           </div>

@@ -5,6 +5,10 @@ export interface Project {
   id: string;
   name: string;
   userDescription: string;
+  plannerProjectType?: string;
+  plannerDimensions?: string;
+  plannerMainSpaces?: string;
+  plannerKeyMaterials?: string;
   detailedConcept?: string;
   planoAcotadoSvg?: string;
   planoElectricoSvg?: string;

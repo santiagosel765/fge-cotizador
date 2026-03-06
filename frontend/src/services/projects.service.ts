@@ -23,6 +23,8 @@ interface QuotationSummary {
   laborGtq?: number | null;
   laborPct?: number | null;
   laborProjectType?: string | null;
+  versionNumber?: number;
+  createdAt?: string;
   items?: QuotationSummaryItem[];
 }
 

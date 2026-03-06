@@ -50,6 +50,13 @@ export class ProjectsController {
     return this.service.update(id, dto);
   }
 
+  @Patch(':id/planner')
+  @ApiParam({ name: 'id', type: 'string' })
+  @ApiOperation({ summary: 'Guardar datos del planificador' })
+  savePlannerData(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateProjectDto) {
+    return this.service.savePlannerData(id, dto);
+  }
+
   @Patch(':id/location')
   @ApiParam({ name: 'id', type: 'string' })
   @ApiOperation({ summary: 'Actualizar ubicación del proyecto' })
