@@ -169,7 +169,7 @@ function ProjectPageContent() {
   const allMaterials = useMemo(() => categories.flatMap(category => category.materials ?? []), [categories]);
 
   useEffect(() => {
-    if (!pendingCartRestore || categories.length === 0) return;
+    if (!pendingCartRestore || allMaterials.length === 0) return;
 
     const restoredCart: CartItem[] = pendingCartRestore
       .map(item => {
@@ -181,9 +181,9 @@ function ProjectPageContent() {
           unit: material.unit,
           unitPriceGtq: Number(item.unitPriceGtq),
           quantity: Number(item.quantity),
-        };
+        } satisfies CartItem;
       })
-      .filter(Boolean) as CartItem[];
+      .filter((item): item is CartItem => item !== null);
 
     if (restoredCart.length > 0) {
       setCart(restoredCart);
@@ -191,7 +191,7 @@ function ProjectPageContent() {
     }
 
     setPendingCartRestore(null);
-  }, [pendingCartRestore, categories, allMaterials]);
+  }, [pendingCartRestore, allMaterials]);
 
   const subtotal = useMemo(() => cart.reduce((acc, item) => acc + Number(item.unitPriceGtq) * item.quantity, 0), [cart]);
   const iva = (subtotal * IVA_RATE) / (1 + IVA_RATE);
