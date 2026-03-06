@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { Archive, Bot, Plus, PlusCircle } from 'lucide-react';
 
 interface EstudioSueloSectionProps {
   projectId: string;
@@ -24,7 +25,7 @@ export function EstudioSueloSection({ projectId }: EstudioSueloSectionProps) {
   return (
     <section data-project-id={projectId} className="bg-white rounded-xl shadow-lg overflow-hidden">
       <div className="bg-gradient-to-r from-amber-600 to-amber-800 text-white px-6 py-5">
-        <h2 className="text-xl font-extrabold">🔬 Estudio de Suelo</h2>
+        <h2 className="text-xl font-extrabold flex items-center gap-2"><Bot size={20} /> Estudio de Suelo</h2>
         <p className="text-amber-200 text-sm mt-1">
           Requisito técnico previo a la construcción — norma AGIES Guatemala
         </p>
@@ -42,7 +43,7 @@ export function EstudioSueloSection({ projectId }: EstudioSueloSectionProps) {
                 ? 'bg-green-500 border-green-500 text-white'
                 : 'border-slate-300 text-slate-600 hover:border-green-400'}`}
             >
-              ✓ Sí, tengo el estudio
+              <span className="flex items-center justify-center gap-1.5"><Plus size={15} /> Sí, tengo el estudio</span>
             </button>
             <button
               onClick={() => setHasStudy(false)}
@@ -50,7 +51,7 @@ export function EstudioSueloSection({ projectId }: EstudioSueloSectionProps) {
                 ? 'bg-amber-500 border-amber-500 text-white'
                 : 'border-slate-300 text-slate-600 hover:border-amber-400'}`}
             >
-              ✗ Aún no lo tengo
+              <span className="flex items-center justify-center gap-1.5"><Archive size={15} /> Aún no lo tengo</span>
             </button>
           </div>
         </div>
@@ -58,7 +59,7 @@ export function EstudioSueloSection({ projectId }: EstudioSueloSectionProps) {
         {hasStudy === false && (
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
             <p className="text-sm font-semibold text-amber-800 mb-2">
-              ⚠️ El estudio de suelo es obligatorio según AGIES NSE 2-10
+              <span className="flex items-center gap-2"><Archive size={15} /> El estudio de suelo es obligatorio según AGIES NSE 2-10</span>
             </p>
             <ul className="text-sm text-amber-700 space-y-1">
               <li>• Costo estimado en Guatemala: <strong>Q 3,500 – Q 8,000</strong></li>
@@ -101,7 +102,7 @@ export function EstudioSueloSection({ projectId }: EstudioSueloSectionProps) {
             {allComplete && (
               <div className="mt-4 bg-green-50 border border-green-200 rounded-lg p-3 text-center">
                 <span className="text-green-700 font-semibold text-sm">
-                  ✅ Estudio de suelo completo — listo para solicitar licencia
+                  <span className="flex items-center justify-center gap-2"><PlusCircle size={15} /> Estudio de suelo completo — listo para solicitar licencia</span>
                 </span>
               </div>
             )}

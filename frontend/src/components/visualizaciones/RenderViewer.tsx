@@ -1,5 +1,7 @@
 'use client';
 
+import { Download, Home } from 'lucide-react';
+
 interface RenderViewerProps {
   imageUrl: string;
   isLoading?: boolean;
@@ -30,7 +32,7 @@ export function RenderViewer({ imageUrl, isLoading, error }: RenderViewerProps):
   if (!imageUrl) {
     return (
       <div className="flex flex-col items-center justify-center h-64 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
-        <span className="text-4xl mb-3">🏠</span>
+        <Home size={40} className="text-slate-300 mb-3" />
         <p className="text-sm text-gray-500">Haz clic en &quot;Generar Render&quot; para crear la imagen</p>
       </div>
     );
@@ -48,7 +50,7 @@ export function RenderViewer({ imageUrl, isLoading, error }: RenderViewerProps):
         download="render-proyecto.png"
         className="absolute bottom-3 right-3 bg-white/90 hover:bg-white text-gray-800 text-xs px-3 py-1.5 rounded-full shadow transition-all flex items-center gap-1"
       >
-        ⬇ Descargar
+        <span className="flex items-center gap-1"><Download size={13} /> Descargar</span>
       </a>
     </div>
   );

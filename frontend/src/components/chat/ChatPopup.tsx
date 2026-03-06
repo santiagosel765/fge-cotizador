@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { api } from '@/lib/api';
+import { Archive } from 'lucide-react';
 
 type MessageRole = 'user' | 'assistant';
 
@@ -107,7 +108,7 @@ export function ChatPopup({ projectId, isOpen, onClose, onNewAssistantMessage }:
           className="rounded-md p-1 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
           aria-label="Cerrar chat"
         >
-          ✕
+          <Archive size={16} />
         </button>
       </header>
 

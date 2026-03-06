@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/lib/auth';
 import { ProjectStatus } from '@/types/project.types';
 import { ProjectRecord, projectsService } from '@/services/projects.service';
-import { Archive, ExternalLink, Eye } from 'lucide-react';
+import { Archive, ExternalLink, Eye, Plus, PlusCircle } from 'lucide-react';
 
 const statusOptions: Array<{ value: 'all' | ProjectStatus; label: string }> = [
   { value: 'all', label: 'Todos' },
@@ -273,7 +273,7 @@ export default function AdminProjectsPage(): JSX.Element {
                 <ul className="mt-2 grid grid-cols-1 gap-1 md:grid-cols-2">
                   {detailedBlueprints.map((item) => {
                     const hasAsset = (selectedProject.aiAssets ?? []).some((asset) => item.keys.includes(asset.assetType?.toLowerCase()));
-                    return <li key={item.label}>{hasAsset ? '✓' : '○'} {item.label}</li>;
+                    return <li key={item.label} className="flex items-center gap-1.5">{hasAsset ? <Plus size={13} className="text-green-600" /> : <PlusCircle size={13} className="text-slate-300" />} {item.label}</li>;
                   })}
                 </ul>
               </div>

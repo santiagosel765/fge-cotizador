@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { Archive, MapPin, PlusCircle } from 'lucide-react';
 
 const DEPARTAMENTOS_GT = [
   'Guatemala', 'Sacatepéquez', 'Chimaltenango', 'Escuintla',
@@ -78,7 +79,7 @@ export function LicenciamientoSection() {
   return (
     <section className="bg-white rounded-xl shadow-lg overflow-hidden">
       <div className="bg-gradient-to-r from-purple-700 to-purple-900 text-white px-6 py-5">
-        <h2 className="text-xl font-extrabold">🏛️ Licenciamiento Municipal</h2>
+        <h2 className="text-xl font-extrabold flex items-center gap-2"><Archive size={20} /> Licenciamiento Municipal</h2>
         <p className="text-purple-200 text-sm mt-1">
           Trámites requeridos en Guatemala para legalizar tu construcción
         </p>
@@ -124,7 +125,7 @@ export function LicenciamientoSection() {
         {departamento && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
             <p className="text-xs text-blue-700">
-              📍 <strong>{departamento}:</strong> Los costos exactos varían por
+              <MapPin size={13} className="inline mr-1" /> <strong>{departamento}:</strong> Los costos exactos varían por
               municipio. Consulta directamente en la municipalidad correspondiente.
               Los valores mostrados son estimados referenciales para Guatemala.
             </p>
@@ -172,10 +173,10 @@ export function LicenciamientoSection() {
                     </p>
                     <div className="flex gap-4 mt-1.5">
                       <span className="text-xs text-slate-600">
-                        💰 {tramite.costo}
+                        <span className="inline-flex items-center gap-1"><Archive size={13} /> {tramite.costo}</span>
                       </span>
                       <span className="text-xs text-slate-600">
-                        ⏱ {tramite.plazo}
+                        <span className="inline-flex items-center gap-1"><Archive size={13} /> {tramite.plazo}</span>
                       </span>
                     </div>
                   </div>
@@ -187,7 +188,7 @@ export function LicenciamientoSection() {
 
         {completedCount >= requiredCount && (
           <div className="bg-green-50 border border-green-300 rounded-lg p-4 text-center">
-            <span className="text-2xl">🎉</span>
+            <PlusCircle size={24} className="text-green-500 mx-auto" />
             <p className="text-green-700 font-bold mt-1">
               ¡Trámites principales completados!
             </p>
