@@ -36,6 +36,18 @@ export class Project {
   @Column('text')
   userDescription!: string;
 
+  @Column({ nullable: true })
+  plannerProjectType!: string;
+
+  @Column({ nullable: true })
+  plannerDimensions!: string;
+
+  @Column('text', { nullable: true })
+  plannerMainSpaces!: string;
+
+  @Column('text', { nullable: true })
+  plannerKeyMaterials!: string;
+
   @Column('text', { nullable: true })
   detailedConcept!: string;
 

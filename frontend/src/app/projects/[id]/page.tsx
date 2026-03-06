@@ -156,10 +156,11 @@ function ProjectPageContent() {
           }
         }
         setPlanner({
-          projectType: projectData.name ?? '',
-          dimensions: '',
-          mainSpaces: '',
-          keyMaterials: '',
+          projectType: projectData.plannerProjectType
+            ?? projectData.name ?? '',
+          dimensions: projectData.plannerDimensions ?? '',
+          mainSpaces: projectData.plannerMainSpaces ?? '',
+          keyMaterials: projectData.plannerKeyMaterials ?? '',
           additionalDetails: '',
         });
       })
@@ -218,6 +219,14 @@ function ProjectPageContent() {
     ].filter(Boolean).join('. ');
 
     try {
+      // Guardar datos del planificador en BD
+      await api.patch(`/projects/${project.id}/planner`, {
+        plannerProjectType: planner.projectType,
+        plannerDimensions: planner.dimensions,
+        plannerMainSpaces: planner.mainSpaces,
+        plannerKeyMaterials: planner.keyMaterials,
+      });
+
       // Actualizar descripción (best-effort)
       try {
         await api.patch<Project>(`/projects/${project.id}`, {

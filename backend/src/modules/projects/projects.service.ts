@@ -83,6 +83,20 @@ export class ProjectsService {
     await this.projectsRepo.softRemove(project);
   }
 
+
+  async savePlannerData(
+    id: string,
+    data: {
+      plannerProjectType?: string;
+      plannerDimensions?: string;
+      plannerMainSpaces?: string;
+      plannerKeyMaterials?: string;
+    },
+  ): Promise<Project> {
+    await this.projectsRepo.update(id, data);
+    return this.findOne(id);
+  }
+
   // Usado por AiModule para actualizar plan conceptual
   async savePlan(
     id: string,
