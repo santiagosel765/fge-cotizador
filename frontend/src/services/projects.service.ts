@@ -6,6 +6,16 @@ interface ProjectFilters {
   status?: string;
 }
 
+interface QuotationSummaryItem {
+  id: string;
+  quantity: number;
+  subtotalGtq: number;
+  material?: {
+    name?: string;
+    unit?: string;
+  } | null;
+}
+
 interface QuotationSummary {
   subtotalGtq?: number;
   ivaGtq?: number;
@@ -13,6 +23,7 @@ interface QuotationSummary {
   laborGtq?: number | null;
   laborPct?: number | null;
   laborProjectType?: string | null;
+  items?: QuotationSummaryItem[];
 }
 
 export interface ProjectAiAsset {
@@ -27,9 +38,11 @@ export interface ProjectRecord extends Project {
   aiAssets?: ProjectAiAsset[];
   user?: {
     id: string;
-    fullName?: string;
-    email?: string;
-  };
+    fullName: string;
+    email: string;
+    phone?: string;
+    role: string;
+  } | null;
 }
 
 function authHeaders(token: string): HeadersInit {

@@ -64,7 +64,11 @@ function getBlueprintCount(project: ProjectRecord): number {
 function latestQuotationTotal(project: ProjectRecord): number | undefined {
   const quotations = project.quotations ?? [];
   if (quotations.length === 0) return undefined;
-  return quotations[quotations.length - 1]?.totalGtq;
+  const q = quotations[quotations.length - 1];
+  if (!q) return undefined;
+  const materials = Number(q.subtotalGtq ?? 0);
+  const labor = Number(q.laborGtq ?? 0);
+  return materials + labor;
 }
 
 export default function AdminProjectsPage(): JSX.Element {
@@ -185,7 +189,14 @@ export default function AdminProjectsPage(): JSX.Element {
                     <p className="font-semibold text-slate-800">{project.name}</p>
                     <p className="text-xs text-slate-500">{truncate(project.userDescription)}</p>
                   </td>
-                  <td className="px-2 py-2 text-slate-600">{project.user?.email ?? project.user?.fullName ?? project.userId}</td>
+                  <td className="px-2 py-2">
+                    <p className="text-slate-800 font-medium">
+                      {project.user?.fullName ?? 'Sin nombre'}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {project.user?.email ?? project.userId}
+                    </p>
+                  </td>
                   <td className="px-2 py-2">
                     <span className={`rounded-full px-2 py-1 text-xs font-semibold capitalize ${badgeClass(project.status)}`}>
                       {formatStatus(project.status)}
@@ -255,9 +266,25 @@ export default function AdminProjectsPage(): JSX.Element {
               </div>
 
               <div className="rounded-lg border p-3">
-                <p className="font-semibold text-slate-800">Cliente</p>
-                <p>ID: {selectedProject.userId}</p>
-                <p>Email/Nombre: {selectedProject.user?.email ?? selectedProject.user?.fullName ?? 'No disponible'}</p>
+                <p className="font-semibold text-slate-800 mb-2">Cliente</p>
+                <div className="space-y-1 text-sm text-slate-600">
+                  <p>
+                    <span className="font-medium">Nombre:</span>{' '}
+                    {selectedProject.user?.fullName ?? 'No disponible'}
+                  </p>
+                  <p>
+                    <span className="font-medium">Email:</span>{' '}
+                    {selectedProject.user?.email ?? 'No disponible'}
+                  </p>
+                  <p>
+                    <span className="font-medium">Teléfono:</span>{' '}
+                    {selectedProject.user?.phone ?? 'No registrado'}
+                  </p>
+                  <p>
+                    <span className="font-medium">Rol:</span>{' '}
+                    {selectedProject.user?.role ?? 'client'}
+                  </p>
+                </div>
               </div>
 
               <div className="rounded-lg border p-3">
@@ -317,6 +344,31 @@ export default function AdminProjectsPage(): JSX.Element {
                         <span>TOTAL GENERAL</span>
                         <span>Q {grandTotal.toLocaleString('es-GT', { minimumFractionDigits: 2 })}</span>
                       </div>
+                      {(q.items?.length ?? 0) > 0 && (
+                        <>
+                          <p className="font-semibold text-slate-700 text-xs uppercase tracking-wide pt-2 mt-2 border-t">
+                            Detalle de materiales ({q.items!.length})
+                          </p>
+                          <div className="max-h-40 overflow-y-auto mt-1 space-y-1">
+                            {q.items!.map((item) => (
+                              <div
+                                key={item.id}
+                                className="flex justify-between text-xs text-slate-600 py-1 border-b border-slate-100"
+                              >
+                                <span className="flex-1 mr-2">
+                                  {item.material?.name ?? 'Material'}
+                                </span>
+                                <span className="text-slate-400 mr-3">
+                                  {Number(item.quantity)} {item.material?.unit ?? ''}
+                                </span>
+                                <span className="font-medium">
+                                  Q {Number(item.subtotalGtq).toLocaleString('es-GT', { minimumFractionDigits: 2 })}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      )}
                       {laborGtq === 0 && (
                         <p className="text-xs text-amber-600 mt-1">
                           Sin mano de obra en esta cotización
