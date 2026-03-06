@@ -28,7 +28,10 @@ export class ProjectsService {
     const qb = this.projectsRepo
       .createQueryBuilder('p')
       .leftJoinAndSelect('p.quotations', 'q')
+      .leftJoinAndSelect('q.items', 'qi')
+      .leftJoinAndSelect('qi.material', 'qim')
       .leftJoinAndSelect('p.aiAssets', 'a')
+      .leftJoinAndSelect('p.user', 'u')
       .where('p.deletedAt IS NULL')
       .orderBy('p.createdAt', 'DESC');
 
@@ -42,7 +45,14 @@ export class ProjectsService {
   async findOne(id: string): Promise<Project> {
     const project = await this.projectsRepo.findOne({
       where: { id },
-      relations: ['aiAssets', 'quotations', 'quotations.items', 'aiConversations'],
+      relations: [
+        'aiAssets',
+        'quotations',
+        'quotations.items',
+        'quotations.items.material',
+        'aiConversations',
+        'user',
+      ],
     });
     if (!project) throw new NotFoundException(`Proyecto ${id} no encontrado`);
     return project;

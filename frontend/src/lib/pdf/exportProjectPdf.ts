@@ -196,95 +196,115 @@ export async function exportProjectPdf(
   const pageHeight = doc.internal.pageSize.getHeight();
   const margin = 10;
 
-  // ─── PORTADA ─────────────────────────────────────────────────────
+  // ─── PORTADA ─────────────────────────────────────────────────
   // Fondo completo azul oscuro
   doc.setFillColor(...COLORS.primary);
   doc.rect(0, 0, pageWidth, pageHeight, 'F');
 
-  // Franja dorada decorativa
+  // Franja dorada superior decorativa (debajo del topbar)
   doc.setFillColor(...COLORS.accent);
-  doc.rect(0, pageHeight * 0.38, pageWidth, 3, 'F');
-  doc.rect(0, pageHeight * 0.38 + 5, pageWidth, 1, 'F');
+  doc.rect(0, 18, pageWidth, 2, 'F');
 
-  // Nombre de la organización
+  // ── Bloque superior: organización (zona 0-18mm) ──
+  doc.setFillColor(20, 40, 100); // azul más oscuro
+  doc.rect(0, 0, pageWidth, 18, 'F');
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(11);
-  doc.setTextColor(180, 210, 255);
-  doc.text('FUNDACION GENESIS EMPRESARIAL', pageWidth / 2, pageHeight * 0.3, {
-    align: 'center',
-  });
+  doc.setFontSize(8);
+  doc.setTextColor(160, 190, 230);
+  doc.text(
+    'FUNDACION GENESIS EMPRESARIAL — Guatemala',
+    pageWidth / 2,
+    11,
+    { align: 'center' },
+  );
 
-  // Título principal
+  // ── Zona central: títulos (35-80mm) ──
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(28);
+  doc.setFontSize(32);
   doc.setTextColor(...COLORS.white);
-  doc.text('COTIZACION', pageWidth / 2, pageHeight * 0.38 - 18, {
-    align: 'center',
-  });
-  doc.setFontSize(20);
-  doc.text('DE CONSTRUCCION', pageWidth / 2, pageHeight * 0.38 - 8, {
-    align: 'center',
-  });
+  doc.text('COTIZACION', pageWidth / 2, 50, { align: 'center' });
 
-  // Nombre del proyecto
+  doc.setFontSize(18);
+  doc.setTextColor(180, 210, 255);
+  doc.text('DE CONSTRUCCION', pageWidth / 2, 65, { align: 'center' });
+
+  // Línea dorada divisoria
+  doc.setFillColor(...COLORS.accent);
+  doc.rect(margin + 20, 72, pageWidth - (margin + 20) * 2, 1.5, 'F');
+
+  // ── Nombre del proyecto (85-100mm) ──
+  doc.setFont('helvetica', 'bold');
   doc.setFontSize(16);
   doc.setTextColor(...COLORS.accent);
-  const projectNameSafe = s(input.projectName) || 'Sin nombre';
-  doc.text(
-    projectNameSafe.length > 35 ? `${projectNameSafe.slice(0, 35)}...` : projectNameSafe,
-    pageWidth / 2,
-    pageHeight * 0.38 + 16,
-    { align: 'center' },
-  );
+  const safeProjectName = s(input.projectName) || 'Sin nombre';
+  const displayName = safeProjectName.length > 38
+    ? `${safeProjectName.slice(0, 38)}...`
+    : safeProjectName;
+  doc.text(displayName, pageWidth / 2, 86, { align: 'center' });
 
-  // Datos del proyecto en portada
-  doc.setFillColor(255, 255, 255, 0.1);
-  const infoY = pageHeight * 0.52;
+  // ── Caja de datos del proyecto (110-200mm) ──
+  // Fondo semitransparente para la caja
+  doc.setFillColor(20, 45, 110);
+  doc.roundedRect(margin + 10, 100, pageWidth - (margin + 10) * 2, 80, 3, 3, 'F');
 
   const infoItems = [
-    ['Tipo de proyecto', s(input.projectType) || 'No especificado'],
-    ['Dimensiones', s(input.dimensions) || 'No especificadas'],
-    [
-      'Fecha',
-      (input.generatedAt ?? new Date()).toLocaleDateString('es-GT', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
+    { label: 'TIPO DE PROYECTO', value: s(input.projectType) || 'No especificado' },
+    { label: 'DIMENSIONES', value: s(input.dimensions) || 'No especificadas' },
+    {
+      label: 'FECHA DE GENERACION',
+      value: (input.generatedAt ?? new Date()).toLocaleDateString('es-GT', {
+        year: 'numeric', month: 'long', day: 'numeric',
       }),
-    ],
+    },
   ];
 
-  infoItems.forEach(([label, value], i) => {
-    const itemY = infoY + i * 14;
-    // Línea separadora
-    doc.setDrawColor(255, 255, 255, 0.2);
-    doc.setLineWidth(0.2);
-    if (i > 0) doc.line(margin + 15, itemY - 4, pageWidth - margin - 15, itemY - 4);
+  infoItems.forEach(({ label, value }, i) => {
+    const baseY = 115 + i * 24;
 
+    // Separador entre items (no antes del primero)
+    if (i > 0) {
+      doc.setDrawColor(40, 70, 140);
+      doc.setLineWidth(0.3);
+      doc.line(margin + 20, baseY - 6, pageWidth - margin - 20, baseY - 6);
+    }
+
+    // Label pequeño
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
-    doc.setTextColor(150, 180, 220);
-    doc.text(label.toUpperCase(), pageWidth / 2, itemY, { align: 'center' });
+    doc.setFontSize(7);
+    doc.setTextColor(140, 170, 220);
+    doc.text(label, pageWidth / 2, baseY, { align: 'center' });
 
+    // Valor
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(12);
+    doc.setFontSize(11);
     doc.setTextColor(...COLORS.white);
-    doc.text(s(value), pageWidth / 2, itemY + 6, { align: 'center' });
+    doc.text(s(value), pageWidth / 2, baseY + 7, { align: 'center' });
   });
 
-  // Nota legal en portada
+  // ── Nota legal (zona inferior) ──
   doc.setFont('helvetica', 'italic');
-  doc.setFontSize(8);
-  doc.setTextColor(120, 150, 190);
+  doc.setFontSize(7.5);
+  doc.setTextColor(100, 130, 180);
   doc.text(
-    'Documento de cotizacion referencial. Precios sujetos a variacion.',
+    'Documento de cotizacion referencial. Precios en Quetzales (GTQ) con IVA incluido.',
     pageWidth / 2,
-    pageHeight - 15,
+    pageHeight - 20,
     { align: 'center' },
   );
-  doc.text('Fundacion Genesis Empresarial — Guatemala', pageWidth / 2, pageHeight - 10, {
-    align: 'center',
-  });
+  doc.text(
+    'Los montos de mano de obra son estimados sujetos a negociacion con el contratista.',
+    pageWidth / 2,
+    pageHeight - 14,
+    { align: 'center' },
+  );
+  doc.text(
+    'Fundacion Genesis Empresarial — FGE Cotizador',
+    pageWidth / 2,
+    pageHeight - 8,
+    { align: 'center' },
+  );
+
+  // ─── FIN PORTADA ─────────────────────────────────────────────
 
   // ─── PÁGINAS DE PLANOS ───────────────────────────────────────────
   let pageNum = 2;
