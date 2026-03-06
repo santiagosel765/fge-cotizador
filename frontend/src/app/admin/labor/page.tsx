@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { HardHat, FileText as Pencil, PlusCircle as CheckCircle } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { LaborConfig, laborConfigService } from '@/services/labor-config.service';
 
@@ -61,7 +62,10 @@ export default function AdminLaborPage(): JSX.Element {
   return (
     <main className="space-y-4">
       <header className="rounded-xl bg-white p-4 shadow-sm">
-        <h1 className="text-2xl font-bold text-slate-900">👷 Configuración de Mano de Obra</h1>
+        <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+          <HardHat size={22} className="text-slate-700" />
+          Configuración de Mano de Obra
+        </h1>
         <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
           Los porcentajes se aplican sobre el subtotal de materiales (IVA incluido).
           Fuente de referencia: mercado guatemalteco de construcción.
@@ -121,9 +125,15 @@ export default function AdminLaborPage(): JSX.Element {
                               }}
                               className="rounded border px-2 py-1 hover:bg-slate-100"
                             >
-                              ✏️ Editar
+                              <span className="flex items-center gap-1.5">
+                                <Pencil size={14} /> Editar
+                              </span>
                             </button>
-                            {updatedId === config.id ? <span className="text-emerald-700">✓ Actualizado</span> : null}
+                            {updatedId === config.id ? (
+                              <span className="flex items-center gap-1 text-emerald-700">
+                                <CheckCircle size={14} /> Actualizado
+                              </span>
+                            ) : null}
                           </div>
                         )}
                       </td>

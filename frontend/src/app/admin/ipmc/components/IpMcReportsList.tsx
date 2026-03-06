@@ -1,5 +1,6 @@
 'use client';
 
+import { Eye } from 'lucide-react';
 import { IpMcReport } from '@/services/ipmc.service';
 
 interface IpMcReportsListProps {
@@ -59,7 +60,9 @@ export function IpMcReportsList({
                         }, 100);
                       }}
                     >
-                      👁 Ver items
+                      <span className="flex items-center gap-1.5">
+                        <Eye size={14} /> Ver items
+                      </span>
                     </button>
                     <button
                       type="button"
