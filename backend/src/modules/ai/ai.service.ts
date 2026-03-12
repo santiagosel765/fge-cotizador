@@ -461,136 +461,91 @@ Responde SOLO con el SVG, sin markdown, sin explicaciones.`,
     return { svgContent };
   }
 
-  async generateRender(projectId: string): Promise<{ imageUrl: string }> {
+  async generateRender(projectId: string): Promise<{ imageBase64: string; mimeType: string }> {
     const project = await this.projectsService.findOne(projectId);
     if (!project) throw new NotFoundException('Proyecto no encontrado');
 
-    const renderPrompt = (project as any).renderPrompt;
-    if (!renderPrompt) {
-      throw new Error('El proyecto no tiene prompt de render. Genera el plan primero.');
-    }
+    const prompt = `Photorealistic architectural render of a ${project.plannerProjectType || 'residential'} building in Guatemala. 
+  ${project.plannerDimensions ? `Dimensions: ${project.plannerDimensions}.` : ''}
+  ${project.plannerMainSpaces ? `Main spaces: ${project.plannerMainSpaces}.` : ''}
+  ${project.plannerKeyMaterials ? `Key materials: ${project.plannerKeyMaterials}.` : ''}
+  Exterior view, daytime, natural lighting, tropical vegetation, high quality architectural visualization, 8K.`;
 
-    const imageModel = this.configService.get<string>('GEMINI_MODEL_IMAGE')
-      ?? 'gemini-2.0-flash-preview-image-generation';
+    const url = `https://us-central1-aiplatform.googleapis.com/v1/projects/${process.env.GOOGLE_CLOUD_PROJECT_ID}/locations/us-central1/publishers/google/models/imagen-4.0-fast-generate-001:predict?key=${process.env.GOOGLE_CLOUD_API_KEY}`;
 
-    let imageDataUrl = '';
-    try {
-      const response = await this.genAINew.models.generateContent({
-        model: imageModel,
-        contents: renderPrompt,
-        config: {
-          responseModalities: ['TEXT', 'IMAGE'],
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        instances: [{ prompt }],
+        parameters: {
+          sampleCount: 1,
+          aspectRatio: '16:9',
+          safetyFilterLevel: 'block_some',
+          personGeneration: 'allow_adult',
         },
-      });
+      }),
+    });
 
-      for (const part of response.candidates?.[0]?.content?.parts ?? []) {
-        if (part.inlineData?.data) {
-          const { mimeType, data } = part.inlineData;
-          imageDataUrl = `data:${mimeType ?? 'image/png'};base64,${data}`;
-          break;
-        }
-      }
-    } catch (error) {
-      this.logger.error(`Error en Gemini generateRender: ${String(error)}`);
-      throw new Error('No se pudo generar el render. Intenta nuevamente.');
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Vertex AI error: ${response.status} — ${error}`);
     }
 
-    if (!imageDataUrl) {
-      throw new Error('Gemini no devolvió imagen para el render. Intenta de nuevo.');
+    const data = await response.json();
+    const prediction = data.predictions?.[0];
+
+    if (!prediction?.bytesBase64Encoded) {
+      throw new Error('Vertex AI no retornó imagen en la respuesta');
     }
 
-    try {
-      const existing = await this.assetsRepo.findOne({
-        where: { projectId, assetType: AiAssetType.RENDER },
-      });
-      if (existing) {
-        existing.storageUrl = imageDataUrl;
-        existing.status = AiAssetStatus.READY;
-        existing.prompt = renderPrompt;
-        existing.modelUsed = imageModel;
-        await this.assetsRepo.save(existing);
-      } else {
-        const asset = this.assetsRepo.create({
-          projectId,
-          assetType: AiAssetType.RENDER,
-          storageUrl: imageDataUrl,
-          status: AiAssetStatus.READY,
-          prompt: renderPrompt,
-          modelUsed: imageModel,
-        });
-        await this.assetsRepo.save(asset);
-      }
-    } catch (err) {
-      this.logger.warn('No se pudo guardar render asset: ' + String(err));
-    }
-
-    return { imageUrl: imageDataUrl };
+    return {
+      imageBase64: prediction.bytesBase64Encoded,
+      mimeType: prediction.mimeType || 'image/png',
+    };
   }
 
-  async generatePanorama(projectId: string): Promise<{ imageUrl: string }> {
+  async generatePanorama(projectId: string): Promise<{ imageBase64: string; mimeType: string }> {
     const project = await this.projectsService.findOne(projectId);
     if (!project) throw new NotFoundException('Proyecto no encontrado');
 
-    const panoPrompt = (project as any).panoPrompt;
-    if (!panoPrompt) {
-      throw new Error('El proyecto no tiene prompt de panorama. Genera el plan primero.');
-    }
+    const prompt = `360 panoramic interior architectural render of a ${project.plannerProjectType || 'residential'} building in Guatemala.
+  ${project.plannerMainSpaces ? `Spaces: ${project.plannerMainSpaces}.` : ''}
+  ${project.plannerKeyMaterials ? `Materials and finishes: ${project.plannerKeyMaterials}.` : ''}
+  Equirectangular projection, photorealistic, high quality interior visualization, natural lighting, 8K.`;
 
-    const imageModel = this.configService.get<string>('GEMINI_MODEL_IMAGE')
-      ?? 'gemini-2.0-flash-preview-image-generation';
+    const url = `https://us-central1-aiplatform.googleapis.com/v1/projects/${process.env.GOOGLE_CLOUD_PROJECT_ID}/locations/us-central1/publishers/google/models/imagen-4.0-fast-generate-001:predict?key=${process.env.GOOGLE_CLOUD_API_KEY}`;
 
-    let imageDataUrl = '';
-    try {
-      const response = await this.genAINew.models.generateContent({
-        model: imageModel,
-        contents: panoPrompt,
-        config: {
-          responseModalities: ['TEXT', 'IMAGE'],
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        instances: [{ prompt }],
+        parameters: {
+          sampleCount: 1,
+          aspectRatio: '16:9',
+          safetyFilterLevel: 'block_some',
+          personGeneration: 'allow_adult',
         },
-      });
+      }),
+    });
 
-      for (const part of response.candidates?.[0]?.content?.parts ?? []) {
-        if (part.inlineData?.data) {
-          const { mimeType, data } = part.inlineData;
-          imageDataUrl = `data:${mimeType ?? 'image/png'};base64,${data}`;
-          break;
-        }
-      }
-    } catch (error) {
-      this.logger.error(`Error en Gemini generatePanorama: ${String(error)}`);
-      throw new Error('No se pudo generar el tour virtual. Intenta nuevamente.');
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Vertex AI error: ${response.status} — ${error}`);
     }
 
-    if (!imageDataUrl) {
-      throw new Error('Gemini no devolvió imagen para el panorama. Intenta de nuevo.');
+    const data = await response.json();
+    const prediction = data.predictions?.[0];
+
+    if (!prediction?.bytesBase64Encoded) {
+      throw new Error('Vertex AI no retornó imagen en la respuesta');
     }
 
-    try {
-      const existing = await this.assetsRepo.findOne({
-        where: { projectId, assetType: AiAssetType.PANORAMA },
-      });
-      if (existing) {
-        existing.storageUrl = imageDataUrl;
-        existing.status = AiAssetStatus.READY;
-        existing.prompt = panoPrompt;
-        existing.modelUsed = imageModel;
-        await this.assetsRepo.save(existing);
-      } else {
-        const asset = this.assetsRepo.create({
-          projectId,
-          assetType: AiAssetType.PANORAMA,
-          storageUrl: imageDataUrl,
-          status: AiAssetStatus.READY,
-          prompt: panoPrompt,
-          modelUsed: imageModel,
-        });
-        await this.assetsRepo.save(asset);
-      }
-    } catch (err) {
-      this.logger.warn('No se pudo guardar panorama asset: ' + String(err));
-    }
-
-    return { imageUrl: imageDataUrl };
+    return {
+      imageBase64: prediction.bytesBase64Encoded,
+      mimeType: prediction.mimeType || 'image/png',
+    };
   }
 
 }
